@@ -71,16 +71,15 @@ if __name__ == "__main__":
     #                  "supplementary_weather_csv_from_CODiS/station_info_table_Eng.csv",
     #                  encoding="utf-8-sig")
 
-    # Step 2: 連到本地端MySQL server
+    # Step 2: 連到GCP VM上的MySQL server
     username = quote_plus(os.getenv("mysql_username"))
     password = quote_plus(os.getenv("mysql_password"))
-    server = "127.0.0.1:3306"
-    db_name = "testdb"
+    server = "127.0.0.1:3307"
+    db_name = "test_db"
 
     # Step 3: 建立engine物件
     engine = create_engine(
         f"mysql+pymysql://{username}:{password}@{server}/{db_name}",
     )
-
     # Step 4: 建立connection物件並連線進入MySQL Server後，建立資料表
     dataframe_first_load_to_mysql(engine)
