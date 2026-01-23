@@ -60,5 +60,3 @@ if __name__ == '__main__':
     # # 存成csv
     # df_weather_obs_stations.to_csv(
     #     save_path/"station_info_table.csv", encoding="utf-8", index=False)
-
-    # 存入資料庫
