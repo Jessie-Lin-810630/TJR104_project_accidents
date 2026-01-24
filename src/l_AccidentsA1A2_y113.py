@@ -60,7 +60,7 @@ sql_col_map = {
     "hit_and_run": types.VARCHAR(2),
     "longitude (WGS84)": types.DECIMAL(10, 6),
     "latitude (WGS84)": types.DECIMAL(10, 6),
-    "long, lat": types.VARCHAR(30),
+    "Nearest_station_ID": types.VARCHAR(30),
 }
 
 
@@ -69,7 +69,7 @@ def dataframe_first_load_to_mysql(sqlengine):
     onto a MySQL database. This function include the create a schema and 
     add neccessary primary key"""
     try:
-        with engine.connect() as conn:
+        with sqlengine.connect() as conn:
             final_df_A1.to_sql("Accident_A1", conn, if_exists="replace",
                                chunksize=1024*1024, dtype=sql_col_map,
                                index=False)  # 已經有accident_id了，不用多的index

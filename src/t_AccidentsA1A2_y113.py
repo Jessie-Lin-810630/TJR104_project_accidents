@@ -1,5 +1,6 @@
 import pandas as pd
 from pathlib import Path
+import hashlib  # 產生PK (SHA256雜湊法)
 
 # 讀檔前先定義資料型別
 col_map = {"發生年度": {"name": "accident_year", "type": int},
@@ -57,7 +58,8 @@ col_map = {"發生年度": {"name": "accident_year", "type": int},
 # print(len(col_map))
 
 
-def read_and_concat_csv(file_dir: Path, keyword_of_file_name: str, dp: dict) -> pd.DataFrame:
+def read_and_concat_csv(file_dir: Path, keyword_of_file_name: str,
+                        dp: dict, column_name: list) -> pd.DataFrame:
     """Read the files about the A1 or A2 accidents in the 'file_dir' folder and then
     concat, load into a new DataFrame.Keyword_of_file_name: A1/A2"""
 
@@ -71,36 +73,40 @@ def read_and_concat_csv(file_dir: Path, keyword_of_file_name: str, dp: dict) -> 
         # 每個csv檔的尾巴有兩筆無法正常按照dtype轉換，故跳過這2列 #skipfooter只有engine設為python時才有支援。
         df = pd.read_csv(a_csv, dtype=dp,
                          skipfooter=2, engine='python')
-        df = df.iloc[:-2]
-        df = df.map(lambda x: x.strip() if isinstance(x, str) else x)
-
-        # 清理日期欄位的格式
-        # 20260101這種格式pandas自己可以識別清楚且保證與SQL的日期格式相容。
-        df['發生日期'] = pd.to_datetime(df['發生日期'])
-
-        # 清理時間欄位的格式
-        # 雷點：不支援有冒號的寫法%HH:%MM:%SS。也不支援%HH%MM%SS
-        df['發生時間'] = pd.to_datetime(df['發生時間'], format='%H%M%S').dt.time
-        # 再轉成字串，因為MySQL認不得pandas的time object這個物件。
-        df['發生時間'] = df['發生時間'].astype(str)
-
-        # 將欄位名稱從中文轉成英文
-        col_name = [v['name'] for v in col_map.values()]
-        df.columns = col_name
 
         # 將每一個df物件暫存到list中
         all_df.append(df)
 
     # 遍歷all_df中的df，逐一串接。
-    final_df = pd.concat(all_df)
-    final_df = final_df.drop_duplicates()  # 去除重複項if exist
+    concat_df = pd.concat(all_df)
+    concat_df = concat_df.drop_duplicates()  # 去除重複項if exist
 
-    # 將經緯度合併後串接在新的一欄(未來可能會刪掉)
-    final_df["long, lat"] = final_df["longitude (WGS84)"].astype(
-        str) + ', ' + final_df["latitude (WGS84)"].astype(str)
+    # 資料清理
+    concat_df = concat_df.map(lambda x: x.strip() if isinstance(x, str) else x)
+
+    # 清理日期欄位的格式
+    # 20260101這種格式pandas自己可以識別清楚且保證與SQL的日期格式相容。
+    concat_df['發生日期'] = pd.to_datetime(concat_df['發生日期'])
+
+    # 清理時間欄位的格式
+    # 雷點：不支援有冒號的寫法%HH:%MM:%SS。也不支援%HH%MM%SS
+    concat_df['發生時間'] = pd.to_datetime(
+        concat_df['發生時間'], format='%H%M%S').dt.time
+    # 再轉成字串，因為MySQL認不得pandas的time object這個物件。
+    concat_df['發生時間'] = concat_df['發生時間'].astype(str)
+
+    # 將欄位名稱從中文轉成英文
+    concat_df.columns = column_name
+
+    # 生成主鍵PK
+    concat_df['accident_id'] = concat_df.apply(lambda row: int(hashlib.sha256(
+        f"{row['accident_date']}{row['accident_time']}{row['accident_location']}{row['longitude (WGS84)']}{row['latitude (WGS84)']}".encode()).hexdigest(), 16) % (10**15), axis=1)
+
+    concat_df.set_index("accident_id", inplace=True, drop=True)
+    concat_df["Nearest_station_ID"] = "TBD"
 
     print(f"總共處理了{count}個csv檔.")
-    return final_df
+    return concat_df
 
 
 curr_dir = Path().resolve()
@@ -112,9 +118,9 @@ src_dir = Path(
 dtypes = {k: v['type'] for k, v in col_map.items()}
 col_name = [v['name'] for v in col_map.values()]
 concat_df_A1 = read_and_concat_csv(
-    src_dir, keyword_of_file_name='A1', dp=dtypes)
+    src_dir, keyword_of_file_name='A1', dp=dtypes, column_name=col_name)
 concat_df_A2 = read_and_concat_csv(
-    src_dir, keyword_of_file_name='A2', dp=dtypes)
+    src_dir, keyword_of_file_name='A2', dp=dtypes, column_name=col_name)
 
 
 if __name__ == "__main__":
@@ -123,6 +129,7 @@ if __name__ == "__main__":
     save_to_dir.mkdir(parents=True, exist_ok=True)
     concat_df_A1.to_csv(save_to_dir/"A1_summary_113.csv",
                         # 用utf-8-sig，只是以利excel decoding時不會出現亂碼，但實際上其他語言來說-sig就是utf-8
-                        index=False, encoding="utf-8-sig")
+                        index=True, encoding="utf-8-sig")
     concat_df_A2.to_csv(save_to_dir/"A2_summary_113.csv",
-                        index=False, encoding="utf-8-sig")
+                        index=True, encoding="utf-8-sig")
+    print("存檔成功!")
