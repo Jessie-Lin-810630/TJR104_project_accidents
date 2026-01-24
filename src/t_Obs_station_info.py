@@ -7,7 +7,7 @@ curr_dir = Path(__file__).resolve().parent
 col_map = {"站號": {"name": "Station_ID", "Type": object},
            "站名": {"name": "Station_name", "Type": object},
            "海拔高度": {"name": "Sea_level", "Type": float},
-           "經度": {"name": "Longtitude (WGS84)", "Type": float},
+           "經度": {"name": "Longitude (WGS84)", "Type": float},
            "緯度": {"name": "Latitude (WGS84)", "Type": float},
            }
 dtypes = {k: v["Type"] for k, v in col_map.items()}

@@ -14,14 +14,14 @@ def dataframe_first_load_to_mysql(sqlengine):
     onto a MySQL database. This function include the create a schema and 
     add neccessary primary key"""
     try:
-        with engine.connect() as conn:
+        with sqlengine.connect() as conn:
             # 將資料存入MySQL
             df.to_sql("Obs_Stations", con=conn, if_exists="replace",
                       dtype={"Station_ID": types.VARCHAR(10),
                              "Station_name": types.VARCHAR(50),
                              "Sea_level": types.DECIMAL(7, 2),
-                             "Longtitude": types.DECIMAL(10, 6),
-                             "Latitude": types.DECIMAL(10, 6)},
+                             "Longitude (WGS84)": types.DECIMAL(10, 6),
+                             "Latitude (WGS84)": types.DECIMAL(10, 6)},
                       index=False)  # 不用匯入index，因為站號已經是有識別用了
 
             # 補上UK、FK，
@@ -30,8 +30,8 @@ def dataframe_first_load_to_mysql(sqlengine):
                 text("""ALTER TABLE Obs_Stations ADD PRIMARY KEY (Station_ID);"""))
 
             conn.execute(
-                text("""ALTER TABLE Obs_Stations CHANGE Longtitude Longtitude DECIMAL(10, 6) NOT NULL,
-                                                CHANGE Latitude Latitude DECIMAL(10, 6) NOT NULL;"""))
+                text("""ALTER TABLE Obs_Stations CHANGE `Longitude (WGS84)` `Longitude (WGS84)` DECIMAL(10, 6) NOT NULL,
+                                                CHANGE `Latitude (WGS84)` `Latitude (WGS84)` DECIMAL(10, 6) NOT NULL;"""))
 
             conn.execute(
                 text("""ALTER TABLE Obs_Stations COMMENT "觀測站基本地理資訊" """))
@@ -72,11 +72,17 @@ if __name__ == "__main__":
     #                  "supplementary_weather_csv_from_CODiS/station_info_table_Eng.csv",
     #                  encoding="utf-8-sig")
 
-    # Step 2: 連到GCP VM上的MySQL server
-    username = quote_plus(os.getenv("mysql_username"))
-    password = quote_plus(os.getenv("mysql_password"))
-    server = "127.0.0.1:3307"
-    db_name = "test_db"
+    # (儲存方法一)建立與本地端MySQL server的連線
+    username = quote_plus(os.getenv("mysqllocal_username"))
+    password = quote_plus(os.getenv("mysqllocal_password"))
+    server = "127.0.0.1:3306"
+    db_name = "TESTDB"
+
+    # (儲存方法二)建立與GCP VM上的MySQL server的連線
+    # username = quote_plus(os.getenv("mysql_username"))
+    # password = quote_plus(os.getenv("mysql_password"))
+    # server = "127.0.0.1:3307"
+    # db_name = "test_db"
 
     # Step 3: 建立engine物件
     engine = create_engine(
