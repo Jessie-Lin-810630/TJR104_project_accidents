@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 from sqlalchemy import create_engine, types, text
 from urllib.parse import quote_plus
+import pymysql
 
 
 def dataframe_first_load_to_mysql(sqlengine):
@@ -24,7 +25,7 @@ def dataframe_first_load_to_mysql(sqlengine):
                       index=False)  # 不用匯入index，因為站號已經是有識別用了
 
             # 補上UK、FK，
-            # 這是sqlalchemy的痛點，無法在建立、存入資料表時一併設定
+            # 這是sqlalchemy的痛點，無法在to_sql資料表當下一併設定，或是要在to_sql前做MetaData
             conn.execute(
                 text("""ALTER TABLE Obs_Stations ADD PRIMARY KEY (Station_ID);"""))
 
