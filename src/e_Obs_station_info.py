@@ -34,7 +34,7 @@ def crawler_stn_info(stdIDurl: str) -> dict:
         station_info = {}
         for i in range(len(columns)):
             columns_text = columns[i].text  # 由左至右逐一讀取表頭的欄位名稱，並標示它在第幾欄
-            if columns_text in ["站號", "站名", "海拔高度(m)", "海拔高度（m）", "經度", "緯度"]:
+            if columns_text in ["站號", "站名", "海拔高度(m)", "海拔高度（m）", "經度", "緯度", "資料起始日期"]:
                 station_info[columns_text] = []
                 for rows in tabledata_rows:  # 找到特定欄位名稱後，往下遍歷每一列
                     data = rows.find_all("td")
