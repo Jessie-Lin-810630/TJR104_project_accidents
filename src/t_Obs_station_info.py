@@ -9,6 +9,7 @@ col_map = {"站號": {"name": "Station_ID", "Type": object},
            "海拔高度": {"name": "Sea_level", "Type": float},
            "經度": {"name": "Longitude (WGS84)", "Type": float},
            "緯度": {"name": "Latitude (WGS84)", "Type": float},
+           "資料起始日期": {"name": "Date_of_Opening", "Type": object}
            }
 dtypes = {k: v["Type"] for k, v in col_map.items()}
 df = pd.read_csv(curr_dir.parent /
@@ -19,6 +20,10 @@ df = pd.read_csv(curr_dir.parent /
 # Step 2: 將欄位名稱由中文轉為英文。
 col_name = {k: v["name"] for k, v in col_map.items()}
 df_weather_obs_stations = df.rename(columns=col_name)
+
+# Step 3: 確保資料起始日期為datetime格式
+pd.to_datetime(
+    df_weather_obs_stations["Date_of_Opening"], errors="coerce").astype(str)
 
 if __name__ == "__main__":
     # Step 3: 存檔。
