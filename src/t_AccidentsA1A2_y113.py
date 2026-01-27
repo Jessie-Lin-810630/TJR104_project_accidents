@@ -2,7 +2,7 @@ import pandas as pd
 from pathlib import Path
 import hashlib  # 產生PK (SHA256雜湊法)
 
-# 讀檔前先定義資料型別
+# pandas讀檔前先定義資料型別
 col_map = {"發生年度": {"name": "accident_year", "type": int},
            "發生月份": {"name": "accident_month", "type": int},
            "發生日期": {"name": "accident_date", "type": object},
@@ -84,16 +84,16 @@ def read_and_concat_csv(file_dir: Path, keyword_of_file_name: str,
     # 資料清理
     concat_df = concat_df.map(lambda x: x.strip() if isinstance(x, str) else x)
 
-    # 清理日期欄位的格式
+    # 清理日期欄位的格式，將object轉成datetime
     # 20260101這種格式pandas自己可以識別清楚且保證與SQL的日期格式相容。
     concat_df['發生日期'] = pd.to_datetime(concat_df['發生日期'])
 
-    # 清理時間欄位的格式
-    # 雷點：不支援有冒號的寫法%HH:%MM:%SS。也不支援%HH%MM%SS
-    concat_df['發生時間'] = pd.to_datetime(
-        concat_df['發生時間'], format='%H%M%S').dt.time
-    # 再轉成字串，因為MySQL認不得pandas的time object這個物件。
-    concat_df['發生時間'] = concat_df['發生時間'].astype(str)
+    # 清理時間欄位的格式，將object轉成str，然後補字補冒號。
+    time_str = concat_df['發生時間'].astype(str).str.zfill(6)
+
+    # 用to_datetime()轉成datetime物件，讓pandas了解到時間格式為 時分秒
+    # 最後要求pandas輸出%H:%M:%S帶有冒號的格式，輸出型別仍然回到了string。
+    pd.to_datetime(time_str, format='%H%M%S').dt.strftime('%H:%M:%S')
 
     # 將欄位名稱從中文轉成英文
     concat_df.columns = column_name
@@ -102,8 +102,8 @@ def read_and_concat_csv(file_dir: Path, keyword_of_file_name: str,
     concat_df['accident_id'] = concat_df.apply(lambda row: int(hashlib.sha256(
         f"{row['accident_date']}{row['accident_time']}{row['accident_location']}{row['longitude (WGS84)']}{row['latitude (WGS84)']}".encode()).hexdigest(), 16) % (10**15), axis=1)
 
+    # 將accident_id設為DF的index，並刪掉(drop)原本欄位
     concat_df.set_index("accident_id", inplace=True, drop=True)
-    concat_df["Nearest_station_ID"] = "TBD"
 
     print(f"總共處理了{count}個csv檔.")
     return concat_df
@@ -111,7 +111,7 @@ def read_and_concat_csv(file_dir: Path, keyword_of_file_name: str,
 
 curr_dir = Path().resolve()
 
-# 以下是範例，應視自己把車禍資料源放在哪個資料夾改。
+# 以下是範例，應視自己把車禍資料源放在哪個資料夾更改src_dir路徑(README.md第1點)。
 src_dir = Path(
     "/Users/little_po/Desktop/Project/04_Traffic_accidents/00_data_sources/113年傷亡道路交通事故資料")
 
@@ -128,7 +128,9 @@ if __name__ == "__main__":
     save_to_dir = curr_dir/"traffic_accient_transformed-csv"
     save_to_dir.mkdir(parents=True, exist_ok=True)
     concat_df_A1.to_csv(save_to_dir/"A1_summary_113.csv",
-                        # 用utf-8-sig，只是以利excel decoding時不會出現亂碼，但實際上其他語言來說-sig就是utf-8
+                        # 當Excel開檔時，預設ANSI來執行decoding(將bytes → str)，會讓中文字亂碼。
+                        # 用 utf-8-sig encoding 確保 Excel 正確解碼csv中的中文字，讓 Excel 自動識別編碼
+                        # 因為index是accident_id，要將index要改成True保留。
                         index=True, encoding="utf-8-sig")
     concat_df_A2.to_csv(save_to_dir/"A2_summary_113.csv",
                         index=True, encoding="utf-8-sig")
