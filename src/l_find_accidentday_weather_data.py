@@ -38,11 +38,11 @@ def clean_special_symbols(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def concat_df_with_same_date(files_in_batch: list,  all_col_label_to_concat: list,
-                             show_column_labels: list) -> None:
+                             show_column_labels: list, dtype) -> None:
     tmp_df = []
     for file in files_in_batch:
         try:
-            df = pd.read_csv(file)
+            df = pd.read_csv(file, dtype=dtype)
             df = df.iloc[1:]  # 列0是英文標題，用不到，從列1開始清
 
             # reindex會自動把csv中的欄位補到跟all_col_label_to_concat一樣多，其中欄位如果一開始不存在就會補值NaN
@@ -54,6 +54,10 @@ def concat_df_with_same_date(files_in_batch: list,  all_col_label_to_concat: lis
                 ".csv", "").split("-")  # C0K400  2024 04  2 22.22
             md = md.split()[0]
             df["觀測站別"] = station_id
+
+            # 清理觀測時間 01 -> 00:01:00
+            df["觀測時間(hour)"] = "00" + ":" + \
+                df["觀測時間(hour)"].astype(str) + ":" + "00"
 
             # 新增觀測日期(如果之後上Bigquery、這行不需要)
             df["觀測日期"] = f"{y:04}-{m:02}-{md:02}"
@@ -93,7 +97,51 @@ def weatherdata_first_load_to_mysql(batch_df: pd.DataFrame, table_name: str, dty
                     chunksize=1000,
                     dtype=dtype,
                     method='multi')
+
+    conn.execute(text(f"""ALTER TABLE `{table_name}`
+                                ADD CONSTRAINT FOREIGN KEY (Station_ID) 
+                                    REFERENCES Obs_Stations (Station_ID);"""))  # 由於表格會很多，手動定義FK約束名稱會很麻煩，乾脆交給系統。
+
+    conn.execute(text(f"""ALTER TABLE `{table_name}`
+                                ADD COLUMN Sequential_order INT AUTO_INCREMENT PRIMARY KEY FIRST;"""))
+
+    conn.execute(
+        text(f"ALTER TABLE `{table_name}` ADD COLUMN Created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP;"))
+
+    conn.execute(
+        text(f"ALTER TABLE `{table_name}` ADD COLUMN Created_by VARCHAR(50) NOT NULL;"))
+
+    conn.execute(
+        text(f"ALTER TABLE `{table_name}` ADD COLUMN Updated_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP;"))
+
+    conn.execute(
+        text(f"ALTER TABLE `{table_name}` ADD COLUMN Updated_by VARCHAR(50) NOT NULL;"))
+
+    conn.execute(
+        text(f"UPDATE `{table_name}` SET Created_by = (:user), Updated_by = (:user);"), {'user': "lucky460721@gmail.com"})
+
+    conn.commit()
     print(f"已成功匯入第 {i} 到 {i+batch_size} 個檔案至MySQL")
+
+    return None
+
+
+def weatherdata_append_to_mysql(batch_df: pd.DataFrame, table_name: str, dtype: dict) -> None:
+    # 使用 method='multi' 加速
+    batch_df.to_sql(table_name,
+                    con=engine,
+                    if_exists='append',
+                    index=False,
+                    chunksize=1000,
+                    dtype=dtype,
+                    method='multi')
+
+    conn.execute(
+        text(f"UPDATE `{table_name}` SET Created_by = (:user), Updated_by = (:user);"), {'user': "lucky460721@gmail.com"})
+
+    conn.commit()
+    print(f"已成功匯入第 {i} 到 {i+batch_size} 個檔案至MySQL")
+
     return None
 
 
@@ -130,25 +178,26 @@ col_map = {
 
 all_col_label_to_concat = [k for k in col_map.keys()]
 col_name_eng = [v['name'] for v in col_map.values()]
+dtype_to_pd = {v['name']: v['type_in_pd'] for k, v in col_map.items()}
 dtype_to_sql = {v['name']: v['type_in_sql'] for k, v in col_map.items()}
 
 if __name__ == "__main__":
     load_dotenv()
     # Step 1: 建立Weather_data資料表所屬資料庫的連線，假設這裡是一台本地的MySQL server
-    username = os.getenv("mysqllocal_username")
-    password = os.getenv("mysqllocal_password")
-    server = "127.0.0.1:3306"
-    DB = "TESTDB"
-    engine = create_engine(
-        f"mysql+pymysql://{username}:{password}@{server}/{DB}",)
+    # username = os.getenv("mysqllocal_username")
+    # password = os.getenv("mysqllocal_password")
+    # server = "127.0.0.1:3306"
+    # DB = "TESTDB"
+    # engine = create_engine(
+    #     f"mysql+pymysql://{username}:{password}@{server}/{DB}",)
 
     # 或是連GCP上的MySQL server
-    # username = quote_plus(os.getenv("mysql_username"))
-    # password = quote_plus(os.getenv("mysql_password"))
-    # server = "127.0.0.1:3307"
-    # db_name = "test_db"
-    # engine = create_engine(
-    #     f"mysql+pymysql://{username}:{password}@{server}/{db_name}",)
+    username = quote_plus(os.getenv("mysql_username"))
+    password = quote_plus(os.getenv("mysql_password"))
+    server = "127.0.0.1:3307"
+    db_name = "test_db"
+    engine = create_engine(
+        f"mysql+pymysql://{username}:{password}@{server}/{db_name}",)
 
     # Step 2: soucrce_dir下面的子資料夾是按觀測日期分類命名，故可資料夾內讀取各測站同日的天氣觀測數據csv file，做以下清理：
     # 1. 不同代碼開頭的csv，因為內容欄位數量不同，所以會上下整併同一天所有測站的csv，將欄位數量擴展到全部一樣寬後，補值。
@@ -165,13 +214,17 @@ if __name__ == "__main__":
 
             files_in_batch = all_files[i: i + batch_size]
             # 執行其中一輪step 2:
-            concat_df = concat_df_with_same_date(files_in_batch,
-                                                 all_col_label_to_concat, col_name_eng)
+            concat_df = concat_df_with_same_date(files_in_batch, all_col_label_to_concat,
+                                                 col_name_eng, dtype_to_pd)
 
             # Step 3: 匯入MySQL
-            weatherdata_first_load_to_mysql(
-                concat_df, f'{dir.name}_Historical_Weather_Observations', dtype_to_sql)
-
+            with engine.connect() as conn:
+                if i == 0:
+                    weatherdata_first_load_to_mysql(
+                        concat_df, f'{dir.name}_Historical_Weather_Observations', dtype_to_sql)
+                else:
+                    weatherdata_append_to_mysql(
+                        concat_df, f'{dir.name}_Historical_Weather_Observations', dtype_to_sql)
             # Step 4 (optional): 存成csv
             # weatherdata_save_as_csv(
             # curr_dir/"supplementary_concat_csv", f"concat_all_stn_{dir.name}_{i}to{i+batch_size}.csv", concat_df)
