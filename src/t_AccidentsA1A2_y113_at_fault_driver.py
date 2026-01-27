@@ -1,6 +1,5 @@
 from t_AccidentsA1A2_y113 import concat_df_A1, concat_df_A2
 from pathlib import Path
-import hashlib  # 產生PK (SHA256雜湊法)
 
 # 呼叫t_AccidentsA1A2_y113.py清理過的final_dataframe of A1/A2
 # 只留下順位1的資料，因為多少個順位1就代表多少筆事件。
