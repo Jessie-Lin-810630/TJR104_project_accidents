@@ -2,33 +2,33 @@
 For practice on the traffic accidents
 
 # The scripts in dir ./src/ could be executed by following the order:
-1. Download the csv files that recording the Taiwan traffic accidents from (https://data.gov.tw/dataset/12818) and (https://data.gov.tw/dataset/13139). Save in your local server.
+1. Download the csv files that recording the Taiwan traffic accidents from (https://data.gov.tw/dataset/12818) and (https://data.gov.tw/dataset/13139). Save in your local file system.
 
-2. Run t_AccidentsA1A2_y113.py to transform the dirty data to the type fit Schema requirement in MySQL. You can also save the transformed data as new csv file before push to MySQL server optionally if server is not ready yet. When doing this, please directly run the script alone (i.e., make sure "__name__ = '__main__'").
-    1. [My learning notes for reminders] (/learing_notes/learning_notes.md)
+2. Run t_AccidentsA1A2_y113.py to transform the dirty data to the type fit Schema requirement in MySQL. You can also save the transformed data as new csv file before push to MySQL server optionally if server is not ready yet. When doing this, please directly run the script alone (i.e., make sure `__name__` = `__main__`").
+    1. [My learning notes for reminders](./learning_notes/learning_notes.md)
 
 3. Optionally, run t_AccidentsA1A2_y113_at_fault_driver.py to further filtering the data, leaving the data of at-fault driver ONLY(只留下肇事順位一的最大責任者的資料). By doing this, we can quickly generate new csv file to report how many tracffic accidents, when to happen, location of accident.
-    1. [My learning notes for reminders] (/learing_notes/learning_notes.md)
+    1. [My learning notes for reminders](/learing_notes/learning_notes.md)
 
 4. Run l_AccidentsA1A2_y113.py to load the transformed data after running the script mentioned in 2. or 3. SQL server can be deployed in GCP or local site. Connection methods for these two scenarios are included in this .py.
-    1. [My learning notes for reminders] (/learing_notes/learning_notes.md)
+    1. [My learning notes for reminders](/learing_notes/learning_notes.md)
 
 5. Run e_Obs_station_info.py to extract the geometry data of weather observation stations in Taiwan. The observation info will be saved as a new csv file.
-    1. [My learning notes for reminders] (/learing_notes/learning_notes.md)
+    1. [My learning notes for reminders](/learing_notes/learning_notes.md)
 
-6. Run t_Obs_station_info.py to clean the wanted data and columns. You can save the transformed data as new csv file before push to MySQL server optionally if server is not ready yet. When doing this, please directly run the script alone (i.e., make sure "__name__ = '__main__'").
+6. Run t_Obs_station_info.py to clean the wanted data and columns. You can save the transformed data as new csv file before push to MySQL server optionally if server is not ready yet. When doing this, please directly run the script alone (i.e., make sure `__name__` = `__main__`").
 
 7. Run l_Obs_station_info.py to load the transformed geometry info of observation stations to MySQL server.
-    1. [My learning notes for reminders] (/learing_notes/learning_notes.md)
+    1. [My learning notes for reminders](/learing_notes/learning_notes.md)
 
 8. Run t_find_nearest_Obs_station.py to find the nearest observation station at each accident location. In this srcipt, Geopandas module is imported to perform the spatial join. It finally returns a new pd.DataFrame with two columns:
         (1) 'accident_id': Matched accident identifiers.
         (2) 'Station_ID': Nearest observation station ID for each accident.
         (3) 'distances': Distances between the station and the accident location.
-    1. [My learning notes for reminders] (/learing_notes/learning_notes.md)
+    1. [My learning notes for reminders](/learing_notes/learning_notes.md)
 
 9. Import the variable defined in t_find_nearest_Obs_station.py , and then run src/l_find_nearest_Obs_station.py to load the table describing relation btw station_Id and nearest_Obs_id to the SQL server (either Local or GCP ).
-    1. [My learning notes for reminders] (/learing_notes/learning_notes.md)
+    1. [My learning notes for reminders](/learing_notes/learning_notes.md)
 
 10. Run src/e_find_accidentday_weather_data.py to check how many weather data should be extract from the GOV-CODis website a weather data open platform (https://codis.cwa.gov.tw/StationData). In this script, must import the self-definded crawerling function on GOV-CODis website a weather data open platform, from the srcipt, src/e_crawerling_func_weather_data.py where use Selenium module.
     ## 待解決、討論問題：
