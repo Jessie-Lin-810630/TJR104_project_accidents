@@ -10,11 +10,19 @@ from dotenv import load_dotenv
 # 讀取Obs_station_info與某一份車禍資料表主表
 # 遍歷每一列車禍資料表主表，將經緯度(WGS84座標系)取出並與Obs_station_info中的觀測站經緯度比對
 # 然後算出最近距離的一站。
-# 將觀測站別寫入車禍資料表主表。
+# 回傳新的dataframe，描述各車禍地點附近最近觀測站站別、經緯度、距離。
 
 def find_nearest_Obs_station(df_accident: pd.DataFrame,
                              df_station: pd.DataFrame) -> pd.DataFrame:
-    """Docstring待補充"""
+    """To find the nearest observation station for each accident location using spatial join.
+    This function matches each accident record (preserved in SQL server) 
+    to its closest weather observation station based on WGS84 coordinates, 
+    using GeoPandas for accurate distance calculations in the EPSG:3826 coordinate reference system.
+    This function returns a new pd.DataFrame with two columns:
+        (1) 'accident_id': Matched accident identifiers.
+        (2) 'Station_ID': Nearest observation station ID for each accident.
+        (3) 'distances': Distances between station and accident.
+    """
 
     # Step2-1: 將 Pandas的DataFrame 轉換為 GeoPandas的GeoDataFrame
     gdf_A1 = gpd.GeoDataFrame(df_accident,
@@ -43,7 +51,8 @@ def find_nearest_Obs_station(df_accident: pd.DataFrame,
         'accident_id'])
 
     # Step2-5: 只取最終要寫入Accident_A1/A2主表的欄位
-    df_to_append = gdf_A1_final[['accident_id', 'Station_ID']].copy()
+    df_to_append = gdf_A1_final[[
+        'accident_id', 'Station_ID', 'distances']].copy()
 
     return df_to_append
 
