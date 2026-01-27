@@ -66,9 +66,6 @@ def crawler_CODis_to_dowload_data(driver: webdriver, wait: WebDriverWait, statio
             time.sleep(2)
 
             # Step 6-6: 找到測站坐落在哪一個資料列，如果找到了，用Selenium driver定位該列最右側趨勢圖icon，並點擊
-
-            # 使用穿透層級語法：//*[contains(text(), '期望該標籤內容帶有什麼關鍵字')]，這會向內掃描標籤下所有內容，即便按鈕被包得太深找得到。
-            # //tr[...]//div[...] 代表在該列底下的任何層級尋找 div
             xpath = f"//tr[.//div[contains(text(), '{station_id}')]]//div[i[contains(@class, 'fa-chart-line')]]"
             chartbtn = wait.until(
                 EC.element_to_be_clickable((By.XPATH, xpath)))
