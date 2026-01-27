@@ -12,7 +12,7 @@ sql_col_map = {
     "accident_year": types.Integer,
     "accident_month": types.Integer,
     "accident_date": types.DATE,
-    "accident_time": types.TIME,  # TIMESTAMP?
+    "accident_time": types.TIME,
     "accident_category": types.VARCHAR(2),
     "police_department": types.VARCHAR(20),
     "accident_location": types.VARCHAR(100),
@@ -60,7 +60,6 @@ sql_col_map = {
     "hit_and_run": types.VARCHAR(2),
     "longitude (WGS84)": types.DECIMAL(10, 6),
     "latitude (WGS84)": types.DECIMAL(10, 6),
-    "Nearest_station_ID": types.VARCHAR(30),
 }
 
 
@@ -69,7 +68,7 @@ def dataframe_first_load_to_mysql(sqlengine):
     onto a MySQL database. This function include the create a schema and 
     add neccessary primary key"""
     try:
-        with sqlengine.connect() as conn:
+        with sqlengine.connect() as conn:  # 資料表名稱自訂
             final_df_A1.to_sql("Accident_A1", conn, if_exists="replace",
                                chunksize=1024*1024, dtype=sql_col_map,
                                index=False)  # 已經有accident_id了，不用多的index
