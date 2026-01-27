@@ -9,7 +9,7 @@ from urllib.parse import quote_plus
 import pymysql
 
 
-def dataframe_first_load_to_mysql(sqlengine):
+def Obs_Stations_first_load_to_mysql(sqlengine):
     """Use to create TABLE with transformed data when first loading them
     onto a MySQL database. This function include the create a schema and 
     add neccessary primary key"""
@@ -63,13 +63,13 @@ def dataframe_first_load_to_mysql(sqlengine):
 
 
 if __name__ == "__main__":
-    curr_dir = Path(__file__).resolve().parent
+    curr_dir = Path().resolve()
     load_dotenv()
 
     # Step 1: 呼叫src/t_Obs_station_info.py的weather_obs_stations (a DataFrame)
     df = df_weather_obs_stations
     # 如果不直接呼叫，而是想讀取t-step存下的中間層數據，則改執行下一行：
-    # df = pd.read_csv(curr_dir.parent /
+    # df = pd.read_csv(curr_dir /
     #                  "supplementary_weather_csv_from_CODiS/station_info_table_Eng.csv",
     #                  encoding="utf-8-sig")
 
@@ -90,4 +90,4 @@ if __name__ == "__main__":
         f"mysql+pymysql://{username}:{password}@{server}/{db_name}",
     )
     # Step 4: 建立connection物件並連線進入MySQL Server後，建立資料表
-    dataframe_first_load_to_mysql(engine)
+    Obs_Stations_first_load_to_mysql(engine)
