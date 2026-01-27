@@ -82,13 +82,13 @@ def dataframe_first_load_to_mysql(sqlengine):
                 text("""ALTER TABLE Accident_A1 COMMENT "113年(:accident_type)車禍事件記錄表" """), {"accident_type": "A1"})
 
             conn.execute(
-                text("""ALTER TABLE Accident_A1 ADD COLUMN Created_on DATETIME DEFAULT NOW(); """))
+                text("""ALTER TABLE Accident_A1 ADD COLUMN Created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP; """))
 
             conn.execute(
                 text("""ALTER TABLE Accident_A1 ADD COLUMN Created_by VARCHAR(50) NOT NULL; """))
 
             conn.execute(
-                text("""ALTER TABLE Accident_A1 ADD COLUMN Updated_on DATETIME DEFAULT NOW(); """))
+                text("""ALTER TABLE Accident_A1 ADD COLUMN Updated_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP; """))
 
             conn.execute(
                 text("""ALTER TABLE Accident_A1 ADD COLUMN Updated_by VARCHAR(50) NOT NULL; """))
@@ -132,7 +132,6 @@ if __name__ == "__main__":
     dataframe_first_load_to_mysql(engine)
 
     # (儲存方法二)建立與GCP VM上的MySQL server的連線
-    # load_dotenv()
     # username = quote_plus(os.getenv("mysql_username"))
     # password = quote_plus(os.getenv("mysql_password"))
     # server = "127.0.0.1:3307"

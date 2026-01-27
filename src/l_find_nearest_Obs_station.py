@@ -2,13 +2,23 @@ from sqlalchemy import create_engine, text, types
 import os
 from dotenv import load_dotenv
 from t_find_nearest_Obs_station import df_A1_to_append
+from urllib.parse import quote_plus
 
 load_dotenv()
-username = os.getenv("mysqllocal_username")
-password = os.getenv("mysqllocal_password")
-server = "127.0.0.1:3306"
-DB = "TESTDB"
+# username = os.getenv("mysqllocal_username")
+# password = os.getenv("mysqllocal_password")
+# server = "127.0.0.1:3306"
+# DB = "TESTDB"
+
+# (儲存方法二)建立與GCP VM上的MySQL server的連線
+username = quote_plus(os.getenv("mysql_username"))
+password = quote_plus(os.getenv("mysql_password"))
+server = "127.0.0.1:3307"
+DB = "test_db"
+
+
 engine = create_engine(f"mysql+pymysql://{username}:{password}@{server}/{DB}",)
+
 
 # 做法一（較推薦）：直接將df_to_append存成一個資料表，表述事故與觀測站兩個實體的關係。
 with engine.connect() as conn:
@@ -30,13 +40,13 @@ with engine.connect() as conn:
                                 ADD COLUMN Sequential_order INT AUTO_INCREMENT PRIMARY KEY FIRST;"""))
 
     conn.execute(
-        text("""ALTER TABLE Station_near_accidents ADD COLUMN Created_on DATETIME DEFAULT NOW(); """))
+        text("""ALTER TABLE Station_near_accidents ADD COLUMN Created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP; """))
 
     conn.execute(
         text("""ALTER TABLE Station_near_accidents ADD COLUMN Created_by VARCHAR(50) NOT NULL; """))
 
     conn.execute(
-        text("""ALTER TABLE Station_near_accidents ADD COLUMN Updated_on DATETIME DEFAULT NOW(); """))
+        text("""ALTER TABLE Station_near_accidents ADD COLUMN Updated_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP; """))
 
     conn.execute(
         text("""ALTER TABLE Station_near_accidents ADD COLUMN Updated_by VARCHAR(50) NOT NULL; """))
