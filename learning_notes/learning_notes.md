@@ -23,22 +23,25 @@
     5. 補充：撰寫雷點，pd.to_datetime(format="????")，????不支援有冒號的寫法%HH:%MM:%SS、%H:%M:%S，處理這行時要小心不要跟strftime() method的要求搞混。
 
 # t_AccidentsA1A2_y113_at_fault_driver.py
-1. Path().resolve() vs. Path(__file__).resolve()
+1. `Path().resolve() vs. Path(__file__).resolve()`
     ```
     Path().resolve() # 回傳目前工作根目錄之絕對路徑，型態為Path物件
     Path(__file__).resolve() # 回傳目前腳本之絕對路徑，型態為Path物件
     ```
-2. 補充 Jupyter notebook中， __file__  變數不存在，因為Notebook不是像.py腳本那樣從檔案載入執行，而是透過互動式kernel逐cell運行，所以呼叫Path(__file__) 時，會拋出NameError: name '__file__' is not defined。為什麼會這樣？
-    1. .py 檔案： 當Python執行一個檔案時，它知道這個檔案在硬碟的哪個位置，所以會自動建立__file__變數，儲存該檔案的路徑。
-    2. Jupyter Notebook： 代碼是在一個互動式的內核(Kernel)中執行的，代碼塊是臨時傳送給內核的「字串」，並沒有對應到硬碟上的某個.py檔案路徑，因此 __file__ 變數不存在。
+2. 補充 Jupyter notebook中， `__file__ ` 變數不存在，因為Notebook不是像.py腳本那樣從檔案載入執行，而是透過互動式kernel逐cell運行，所以呼叫`Path(__file__)` 時，會拋出`NameError: name '__file__' is not defined`。為什麼會這樣？
+    1. .py 檔案： 當Python執行一個檔案時，它知道這個檔案在硬碟的哪個位置，所以會自動建立`__file__`變數，儲存該檔案的路徑。
+    2. Jupyter Notebook： 代碼是在一個互動式的內核(Kernel)中執行的，代碼塊是臨時傳送給內核的「字串」，並沒有對應到硬碟上的某個.py檔案路徑，因此` __file__` 變數不存在。
 
-3. if __main__ == "__name__" in .py and .ipynb
-    1. sss
-
+3. 承2.，`if __name__ == "__main__"` in .py vs. in .ipynb
+    1. 在Jupyter Notebook中是有`__name__`變數的。但它的行為與一般的.py檔不同。
+    2. 在 Jupyter Notebook 的環境下，`__name__` 這個變數永遠會被賦值為 `"__main__"`。
+    3. 但在Jupyter notebook環境中還是可以保持習慣寫`if __name__ == "__main"`，方便移植到.py檔後，且不會被其他.py檔import時，不會自動執行測試區程式碼或主程式邏輯。如果不移植，在Jupyter notebook中維持寫這行也可以提醒自己、code viewers說這段是測試用的。
 
 # l_AccidentsA1A2_y113.py
 1. As mentioned in the paragraph for t_AccidentsA1A2_y113.py, must carefully assign the data types of each columns when using pandas.dataframe.to_sql() in the parameter 'dtype'. This make sure the stability of type conversion from file system to DBMS.
+
 2. When using .to_sql('table_name') method to load to SQL server, if the table does not exist then the sql server will automatically create a new table as the table_name given in to_sql().
+
 3. engine.begin vs. engine.connect()
     1. engine.begin(): 搭配with begin() as conn 上下文管理器時，可以自動commit或rolling back。 
     2. while connect() 手動commit或rolling back每筆交易。
@@ -58,7 +61,7 @@
 2. stream=True 用意啟用串流模式，逐塊下載內容而不一次載入記憶體。頁面是大型 Markdown 表格（數百氣象站資料），適合大檔案爬取，避免記憶體溢位。之後用 response.iter_content() 處理資料。
 
 # l_Obs_station_info.py
-1. quote_plus用於將字串中的特殊字符(如空格、 & 、 =  等) 轉換成url安全的百分比編碼格式，特別適合查詢參數(query string)。
+1. quote_plus用於將字串中的特殊字符(如: 空格、&、=) 轉換成url安全的百分比編碼格式，特別適合查詢參數(query string)。
 
 # t_find_nearest_Obs_station.py
 1. 尋找最近觀測站
