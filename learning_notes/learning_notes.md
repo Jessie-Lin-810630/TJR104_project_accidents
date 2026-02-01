@@ -31,7 +31,7 @@
 2. 補充 Jupyter notebook中， `__file__ ` 變數不存在，因為Notebook不是像.py腳本那樣從檔案載入執行，而是透過互動式kernel逐cell運行，所以呼叫`Path(__file__)` 時，會拋出`NameError: name '__file__' is not defined`。為什麼會這樣？
     1. .py 檔案： 當Python執行一個檔案時，它知道這個檔案在硬碟的哪個位置，所以會自動建立`__file__`變數，儲存該檔案的路徑。
     2. Jupyter Notebook： 代碼是在一個互動式的內核(Kernel)中執行的，代碼塊是臨時傳送給內核的「字串」，並沒有對應到硬碟上的某個.py檔案路徑，因此` __file__` 變數不存在。
-
+    3. 在.ipynb檔中可以用這個方式找到
 3. 承2.，`if __name__ == "__main__"` in .py vs. in .ipynb
     1. 在Jupyter Notebook中是有`__name__`變數的。但它的行為與一般的.py檔不同。
     2. 在 Jupyter Notebook 的環境下，`__name__` 這個變數永遠會被賦值為 `"__main__"`。
@@ -62,6 +62,59 @@
 
 # l_Obs_station_info.py
 1. quote_plus用於將字串中的特殊字符(如: 空格、&、=) 轉換成url安全的百分比編碼格式，特別適合查詢參數(query string)。
+2. Insert into existing Table敘述，有以sqlalchemy+SQL statement為主體的寫法與python-list+pandas的寫法。
+    2.1 以sqlalchemy為主，用比較多SQL statement
+        ```
+        # source_df: 打算寫入Table的資料表
+        engine = create_engine(f"mysql+pymysql://{username}:{password}@{server}/{db_name}")
+        with engine.connect() as conn:
+            for _, row in source_df.iterrows():
+                dml_text = text("""INSERT INTO Obs_stations
+                                        (Station_id, Station_name, Station_sea_level)
+                                    VALUES
+                                        ((:Station_id), (:Station_name), (:Station_sea_level));
+                                """)
+                conn.execute(dml_text, {"Station_id": row["Station_id"],
+                                        "Station_name": row["Station_name"],
+                                        "Station_sea_level": row["Station_sea_level"],
+                                        ...,
+                                        ...,
+                                        })
+                conn.commit()
+        ```
+    2.2 以python-list+pandas寫
+        ```
+            # source_df: 打算寫入Table的資料表
+            row_info_to_insert = []
+            for _, row in source_df.iterrows():
+                row_info_to_insert.append({
+                    "Station_id": row["Station_id"],
+                    "Station_name": row["Station_name"],
+                    "Station_sea_level": row["Station_sea_level"],
+                    ....,
+                    ....
+                    })
+            df_to_insert = pd.DataFrame(row_info_to_insert)
+            conn = create_engine(
+                    f"mysql+pymysql://{username}:{password}@{server}/{db_name}").connect()
+            df_to_insert.to_sql("Obs_stations", conn, index=False, if_exists="append")
+            conn.commit()
+        ```
+    2.3 兩者比較
+    
+        |  面向     |  2.1逐列sqlalchemy                    |  2.2 pandas+to_sql批次寫入       |
+        |----------| ------------------------------------- |-------------------------------- |
+        | 操作層級  |  per‑row SQL 語句                      |  per‑DataFrame 批次寫入         |  
+        |----------| ------------------------------------- |--------------------------------|
+        | 效能      |  慢，N筆 = N次execute+commit           |  快，批次送出，driver 可再調優     |  
+        |----------| ------------------------------------- |-----------------------------   |
+        | 控制粒度  | 高：可per‑row查詢、條件邏輯、複雜SQL       |  中：適合單純 insert / append    |          
+        |----------| ------------------------------------- |-------------------------------- |
+        | 可讀性    | 程式碼較長，SQL 模板＋欄位 mapping 要維護  |  程式簡短，欄位對齊 DataFrame 即可 |
+        |----------| ------------------------------------- |-------------------------------- |
+        | 交易行為  | 可自己決定何時 commit                    |  多半整批一個 transaction         |
+        |----------| ------------------------------------- |---------------------------------|
+        | 適用情境  | 少量資料、複雜邏輯、需高度客製 SQL         | 大量資料、單純 append、ETL pipeline |        
 
 # t_find_nearest_Obs_station.py
 1. 尋找最近觀測站
