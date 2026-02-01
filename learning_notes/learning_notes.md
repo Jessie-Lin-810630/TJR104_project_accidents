@@ -101,6 +101,7 @@
         conn.commit()
     ```
     2.3 兩者比較
+        ```
         | 面向     | 2.1逐列sqlalchemy                         | 2.2 pandas+to_sql批次寫入           |
         |----------|-------------------------------------------|-------------------------------------|
         | 操作層級 | per‑row SQL 語句                          | per‑DataFrame 批次寫入              |
@@ -108,8 +109,8 @@
         | 控制粒度 | 高：可per‑row查詢、條件邏輯、複雜SQL      | 中：適合單純 insert / append        |
         | 可讀性   | 程式碼較長，SQL 模板＋欄位 mapping 要維護 | 程式簡短，欄位對齊 DataFrame 即可   |
         | 交易行為 | 可自己決定何時 commit                     | 多半整批一個 transaction            |
-        | 適用情境 | 少量資料、複雜邏輯、需高度客製 SQL        | 大量資料、單純 append、ETL pipeline |      
-
+        | 適用情境 | 少量資料、複雜邏輯、需高度客製 SQL        | 大量資料、單純 append、ETL pipeline |
+        ```
 # t_find_nearest_Obs_station.py
 1. 尋找最近觀測站
     ```
