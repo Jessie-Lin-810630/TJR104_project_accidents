@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 
 # 建立Weather_data資料表
-load_dotenv()
+load_dotenv("./src/.env")
 username = os.getenv("mysqllocal_username")
 password = os.getenv("mysqllocal_password")
 server = "127.0.0.1:3306"
@@ -12,15 +12,15 @@ DB = "TESTDB"
 engine = create_engine(f"mysql+pymysql://{username}:{password}@{server}/{DB}",)
 
 
-def create_histo_weahter_data_schema(engine) -> None:
-    """Create the table 'weather_historical_data' into the assigned database
+def create_hist_weahter_data_table(engine, table_name: str) -> None:
+    """Create the table 'historical_weather_data' into the assigned database
     in MySQL server (given by engine object) if the table is not exist.
     Raise Error when the table is already exist. '"""
     with engine.connect() as conn:
-        text_query = text("""CREATE TABLE weather_historical_data(
-                                `Station_ID` VARCHAR(10) COMMENT '觀測站別',
-                                `Observation_date` DATE DEFAULT('1990-01-01') COMMENT '觀測日期',
-                                `Observation_time` TIME DEFAULT('00:00:00') COMMENT '觀測時間(hour)',
+        ddl_query = text(f"""CREATE TABLE {table_name}(
+                                `Station_record_id` INT AUTO_INCREMENT COMMENT '測站紀錄流水編號',
+                                `Station_id` VARCHAR(10) COMMENT '觀測站別',
+                                `Observation_datetime` DATETIME COMMENT '氣象觀測日期(yyyy/mm/dd HH:MM:00)',
                                 `Station_air_pressure` DECIMAL(6,1) COMMENT '測站氣壓(hPa)',
                                 `Sea_pressure` DECIMAL(6,1) COMMENT '海平面氣壓(hPa)',
                                 `Temperature` DECIMAL(6,1) COMMENT '氣溫(℃)',
@@ -46,15 +46,19 @@ def create_histo_weahter_data_schema(engine) -> None:
                                 `Soil_temp_at_30_cm` DECIMAL(6,1) COMMENT '地溫30cm',
                                 `Soil_temp_at_50_cm` DECIMAL(6,1) COMMENT '地溫50cm',
                                 `Soil_temp_at_100_cm` DECIMAL(6,1) COMMENT '地溫100cm',
-                                PRIMARY KEY (`Station_ID`, `Observation_date`, `Observation_time`),
-                                CONSTRAINT UK_HWD_StationID (`Station_ID`),
-                                CONSTRAINT FK_HWD_StationID FOREIGN KEY (`Station_ID`)
-                                            REFERENCES Obs_Stations(`Station_ID`))
+                                `Created_on` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '建立日期',
+                                `Created_by` VARCHAR(50) COMMENT '建立者',
+                                `Updated_on` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '最近修改日期',
+                                `Updated_by` VARCHAR(50) COMMENT '修改者',
+                                PRIMARY KEY (`Station_ID`, `Observation_datetime`),
+                                CONSTRAINT FK_HWD_StnID FOREIGN KEY (`Station_record_id`)
+                                            REFERENCES Obs_stations(`Station_record_id`))
                                 CHARSET=utf8mb4 COMMENT '各觀測站天氣觀測結果';""")
 
-        conn.execute(text_query)
-        print("weather_historical_data資料表建立成功！")
+        conn.execute(ddl_query)
+        print(f"{table_name}資料表建立成功！")
         return None
 
+
 # 創建資料表
-# create_histo_weahter_data_schema(engine)
+create_hist_weahter_data_table(engine, "Historical_weather_data")
