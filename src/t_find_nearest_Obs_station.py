@@ -33,7 +33,7 @@ def find_nearest_Obs_station(df_accident: pd.DataFrame,
 
     gdf_Obs_stn = gpd.GeoDataFrame(df_station,
                                    geometry=gpd.points_from_xy(
-                                       df_station["Longitude (WGS84)"], df_station["Latitude (WGS84)"]),
+                                       df_station["Station_longitude_WGS84"], df_station["Station_latitude_WGS84"]),
                                    crs="EPSG:4326")
 
     # Step2-2: 將geometry那欄的座標系轉換為"EPSG 3826公尺座標系"，代表事故地點在公尺座標系下的位置
@@ -44,7 +44,7 @@ def find_nearest_Obs_station(df_accident: pd.DataFrame,
     gdf_A1_3826 = gdf_A1_3826.set_geometry("geometry")
     gdf_A1_3826_with_nearest_Obs_stn = gpd.sjoin_nearest(gdf_A1_3826, gdf_Obs_stn_3826,
                                                          how="left",
-                                                         distance_col="distances",)
+                                                         distance_col="distances")
 
     # Step2-4: 確保一個 accident_id 只對應到一個站點 (取第一個)
     gdf_A1_final = gdf_A1_3826_with_nearest_Obs_stn.drop_duplicates(subset=[
@@ -68,11 +68,15 @@ engine = create_engine(f"mysql+pymysql://{username}:{password}@{server}/{DB}",)
 try:
     with engine.connect() as conn:
         df_A1 = pd.read_sql("""SELECT *
-                                FROM Accident_A1""", con=conn)
-        df_Obs_stn = pd.read_sql("""SELECT Station_ID, `Longitude (WGS84)`, `Latitude (WGS84)`
-                                    FROM Obs_Stations""", conn)
+                                FROM Accident_A1_113y""", con=conn)
+        df_A2 = pd.read_sql("""SELECT *
+                                FROM Accident_A2_113y""", con=conn)
+        df_Obs_stn = pd.read_sql("""SELECT Station_ID, `Station_longitude_WGS84`, `Station_latitude_WGS84`
+                                        FROM Obs_stations""", conn)
 except Exception as e:
     print(f"Error!!{e}")
 finally:
     df_A1_to_append = find_nearest_Obs_station(df_A1, df_Obs_stn)
-    # df_A2_to_append = find_nearest_Obs_station(df_A2, df_Obs_stn)
+    df_A2_to_append = find_nearest_Obs_station(df_A2, df_Obs_stn)
+    df_A2_to_append.to_csv(
+        Path().resolve()/"util/A2_nearest_Obs_station.csv", encoding="utf-8-sig")
