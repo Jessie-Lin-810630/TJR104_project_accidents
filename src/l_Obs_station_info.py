@@ -1,93 +1,72 @@
-from t_Obs_station_info import df_weather_obs_stations
+from t_Obs_station_info import df_new_stn, df_existing_stn_change
 import os
 # terminal執行poetry add python-dotenv或pip install python-dotenv
 from dotenv import load_dotenv
-from pathlib import Path
 import pandas as pd
-from sqlalchemy import create_engine, types, text
+import numpy as np
+from sqlalchemy import create_engine, text
 from urllib.parse import quote_plus
-import pymysql
+from datetime import datetime
 
+# Step 1: 讀取現在資料表中的既有資料
+# Step 1-1: 準備與本地端MySQL server的連線
+load_dotenv()
+username = quote_plus(os.getenv("mysqllocal_username"))
+password = quote_plus(os.getenv("mysqllocal_password"))
+server = "127.0.0.1:3306"
+db_name = "TESTDB"
+engine = create_engine(
+    f"mysql+pymysql://{username}:{password}@{server}/{db_name}",)  # 建立engine物件
+writer = quote_plus(os.getenv("mail_address"))
 
-def Obs_Stations_first_load_to_mysql(sqlengine):
-    """Use to create TABLE with transformed data when first loading them
-    onto a MySQL database. This function include the create a schema and 
-    add neccessary primary key"""
-    try:
-        with sqlengine.connect() as conn:
-            # 將資料存入MySQL
-            df.to_sql("Obs_Stations", con=conn, if_exists="replace",
-                      dtype={"Station_ID": types.VARCHAR(10),
-                             "Station_name": types.VARCHAR(50),
-                             "Sea_level": types.DECIMAL(7, 2),
-                             "Longitude (WGS84)": types.DECIMAL(10, 6),
-                             "Latitude (WGS84)": types.DECIMAL(10, 6),
-                             "Date_of_Opening": types.DATE},
-                      index=False)  # 不用匯入index，因為站號已經是有識別用了
+# 或Step 1-1: 準備與GCP VM上的MySQL server的連線
+# load_dotenv()
+# username = quote_plus(os.getenv("mysql_username"))
+# password = quote_plus(os.getenv("mysql_password"))
+# server = "127.0.0.1:3307"
+# db_name = "test_db"
+# engine = create_engine(
+#     f"mysql+pymysql://{username}:{password}@{server}/{db_name}",
+# )  # 建立engine物件
+# writer = quote_plus(os.getenv("mail_address"))
 
-            # 補上UK、FK，
-            # 這是sqlalchemy的痛點，無法在to_sql資料表當下一併設定，或是要在to_sql前做MetaData
-            conn.execute(
-                text("""ALTER TABLE Obs_Stations ADD PRIMARY KEY (Station_ID);"""))
+# Step 1-2: 建立連線
+with engine.connect() as conn:
+    df_new_stn_l = df_new_stn.copy()
+    df_existing_stn_change_l = df_existing_stn_change.copy()
+    row_info_to_insert = []
+    # 遍歷每個資料列，把要插入MySQL的欄位名稱的值，做成list。
+    for _, row in df_new_stn_l.iterrows():
+        row_info_to_insert.append({
+            "Station_id": row["Station_id"],
+            "Station_name": row["Station_name"],
+            "Station_sea_level": row["Station_sea_level"],
+            "Station_longitude_WGS84": row["Station_longitude_WGS84"],
+            "Station_latitude_WGS84": row["Station_latitude_WGS84"],
+            "Station_working_state": row["Station_working_state_new"],
+            "State_valid_from": row["State_valid_from"],
+            "State_valid_to": datetime(9999, 12, 31).strftime("%Y-%m-%d"),
+            "Remark": row["Remark"],
+            "Created_by": writer,
+            "Updated_by": writer,
+        })
+        df_to_insert = pd.DataFrame(row_info_to_insert)
+        df_to_insert.to_sql("Ob s_stations", conn,
+                            index=False, if_exists="append")
+        conn.commit()
 
-            conn.execute(
-                text("""ALTER TABLE Obs_Stations CHANGE `Longitude (WGS84)` `Longitude (WGS84)` DECIMAL(10, 6) NOT NULL,
-                                                CHANGE `Latitude (WGS84)` `Latitude (WGS84)` DECIMAL(10, 6) NOT NULL;"""))
-
-            conn.execute(
-                text("""ALTER TABLE Obs_Stations COMMENT "觀測站基本地理資訊" """))
-
-            conn.execute(
-                text("""ALTER TABLE Obs_Stations ADD COLUMN Created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP; """))
-
-            conn.execute(
-                text("""ALTER TABLE Obs_Stations ADD COLUMN Created_by VARCHAR(50) NOT NULL; """))
-
-            conn.execute(
-                text("""ALTER TABLE Obs_Stations ADD COLUMN Updated_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP; """))
-
-            conn.execute(
-                text("""ALTER TABLE Obs_Stations ADD COLUMN Updated_by VARCHAR(50) NOT NULL; """))
-
-            conn.execute(
-                text("UPDATE Obs_Stations SET Created_by = (:user), Updated_by = (:user);"), {'user': "lucky460721@gmail.com"})
-
-            conn.commit()  # 手動提交，確保變更生效
-    except RuntimeError as re:
-        print(f"錯誤!{re}")
-    except Exception as e:
-        print(f"發生非預期的錯誤：{e}")
-
-    else:
-        print("資料表Obs_Stations建立並寫入成功！")
-
-
-if __name__ == "__main__":
-    curr_dir = Path().resolve()
-    load_dotenv()
-
-    # Step 1: 呼叫src/t_Obs_station_info.py的weather_obs_stations (a DataFrame)
-    df = df_weather_obs_stations
-    # 如果不直接呼叫，而是想讀取t-step存下的中間層數據，則改執行下一行：
-    # df = pd.read_csv(curr_dir /
-    #                  "supplementary_weather_csv_from_CODiS/station_info_table_Eng.csv",
-    #                  encoding="utf-8-sig")
-
-    # (儲存方法一)建立與本地端MySQL server的連線
-    # username = quote_plus(os.getenv("mysqllocal_username"))
-    # password = quote_plus(os.getenv("mysqllocal_password"))
-    # server = "127.0.0.1:3306"
-    # db_name = "TESTDB"
-
-    # (儲存方法二)建立與GCP VM上的MySQL server的連線
-    username = quote_plus(os.getenv("mysql_username"))
-    password = quote_plus(os.getenv("mysql_password"))
-    server = "127.0.0.1:3307"
-    db_name = "test_db"
-
-    # Step 3: 建立engine物件
-    engine = create_engine(
-        f"mysql+pymysql://{username}:{password}@{server}/{db_name}",
-    )
-    # Step 4: 建立connection物件並連線進入MySQL Server後，建立資料表
-    Obs_Stations_first_load_to_mysql(engine)
+    for _, row in df_existing_stn_change_l.iterrows():
+        if row["Station_working_state_new"] is np.nan:
+            dml_text = text("""UPDATE Obs_stations 
+                                    SET
+                                        Station_working_State = "Previous Run",
+                                        State_valid_to = (:closing_date),
+                                        Updated_on = CURRENT_TIMESTAMP,
+                                        Updated_by = (:writer)
+                                    WHERE Station_record_id = (:record_id);
+                            """)
+            conn.execute(dml_text, {"closing_date": datetime.now().strftime("%Y-%m-%d"),
+                                    "writer": writer,
+                                    "record_id": row["Station_record_id"],
+                                    })
+        conn.commit()
