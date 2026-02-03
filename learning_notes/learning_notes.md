@@ -154,3 +154,22 @@
         rm -rf ~/.wdm # 清除WebDriverManager快取、重新下載
         poetry run python src/e_find_accidentday_weather_data.py
         ```
+
+# t_find_nearby_Obs_station.py
+1. 兩種給名次並篩選前兩名的方式:
+    1. 假設有一dataframe叫near_Obs_stn，內有事故案件編號accident_id、事故地點附近觀測站station_id、事故地點與觀測站之間的距離distance，現在想要將事故地點分組後、在組內根據距離遠近給予排名，最短距離排名最前(1)、最遠則是排名最後。輸出的dataframe希望是留下每組的前兩名。
+        ```
+        # 寫法一：用rank()，但rank只負責標記名次，不保證輸出時的排序顯示。
+            nearby_Obs_stn["rank"] = nearby_Obs_stn.groupby(by="accident_id")["distance"].rank(method="first",  ascending=True, na_option="top")
+
+            nearest_two_stn = nearby_Obs_stn[nearby_Obs_stn["rank"] <= 2]
+        ```
+        
+        ```
+        # 寫法二：先sort_values()做排序、再cumcount() + 1
+            nearest_two_stn = nearby_Obs_stn.sort_values(
+            by=["accident_id", "distance"], axis=0, ascending=[True, True], na_position="first")
+            
+            nearest_two_stn["rank"] = nearest_two_stn.groupby("accident_id").cumcount()+1
+            nearest_two_stn = nearest_two_stn[nearest_two_stn["rank"] <= 2]
+        ```
