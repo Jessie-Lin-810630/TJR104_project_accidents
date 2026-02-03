@@ -8,7 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait  # 等待元素出現/�
 from selenium.webdriver.support import expected_conditions as EC  # 等待條件判斷
 import time  # 延遲執行，確保網頁載入與元素穩定
 from pathlib import Path  # 設定檔案路徑為Path物件
-
+import re
 import calendar  # 生成合法日曆日期，避免選到不存在的日期
 
 
@@ -24,6 +24,51 @@ options = Options()
 #  Step 3: 建立下載路徑
 prefs = {"download.default_directory": str(save_path)}
 options.add_experimental_option("prefs", prefs)
+
+
+def get_CODis_to_open_stn_list(driver: webdriver, wait: WebDriverWait) -> list:
+    try:
+        # Step 4-1 or 6-1: 進入網站
+        driver.get("https://codis.cwa.gov.tw/StationData")
+
+        # Step 4-2 or 6-2: 勾選自動雨量站
+        stationC1_input = wait.until(
+            EC.element_to_be_clickable((By.ID, "auto_C1")))
+        driver.execute_script("arguments[0].click();", stationC1_input)
+
+        # Step 4-3 or 6-3: 勾選自動氣象站
+        stationC2_input = driver.find_element(By.ID, "auto_C0")
+        stationC2_input.click()
+
+        # Step 4-4 or 6-4: 勾選農業站
+        stationC2_input = driver.find_element(By.ID, "agr")
+        stationC2_input.click()
+
+        # Step 4-5 or 6-5: 點開測站清單
+        station_lst_btn = driver.find_element(
+            By.CSS_SELECTOR, "#switch_display > button:nth-child(2)")
+        station_lst_btn.click()
+        time.sleep(2)
+        return None
+    except Exception as e:
+        print(f"Error發生: {e}")
+        return None
+
+
+def crawler_CODis_existing_stn_list(driver: webdriver, wait: WebDriverWait) -> list:
+    try:
+        # Step 4-1 ~ 4-5: 造訪網站直到打開測站清單
+        get_CODis_to_open_stn_list(driver, wait)
+
+        # Step 4-6: 尋找有開放載點的測站。
+        divs = driver.find_elements(By.XPATH,
+                                    '//*[@id="station_table"]/table/tbody/tr/td[2]/div')
+        stn_lst = [div.text for div in divs]
+        return stn_lst
+
+    except Exception as e:
+        print(f"Error發生: {e}")
+        return None
 
 
 def crawler_CODis_to_dowload_data(driver: webdriver, wait: WebDriverWait, station_id: str,
@@ -42,28 +87,8 @@ def crawler_CODis_to_dowload_data(driver: webdriver, wait: WebDriverWait, statio
     for attempt in range(max_retry_time):
         print(f"\t第{attempt+1}次嘗試中.....")
         try:
-            # Step 6-1: 進入網站
-            driver.get("https://codis.cwa.gov.tw/StationData")
-
-            # Step 6-2: 勾選自動雨量站
-            # 用find_element()+click()也可以，但是精準度稍低，經實測結果大約150次點擊中有機率會失敗5次。
-            stationC1_input = wait.until(
-                EC.element_to_be_clickable((By.ID, "auto_C1")))
-            driver.execute_script("arguments[0].click();", stationC1_input)
-
-            # Step 6-3: 勾選自動氣象站
-            stationC2_input = driver.find_element(By.ID, "auto_C0")
-            stationC2_input.click()
-
-            # Step 6-4: 勾選農業站
-            stationC2_input = driver.find_element(By.ID, "agr")
-            stationC2_input.click()
-
-            # Step 6-5: 點開測站清單
-            station_lst_btn = driver.find_element(
-                By.CSS_SELECTOR, "#switch_display > button:nth-child(2)")
-            station_lst_btn.click()
-            time.sleep(2)
+            # Step 6-1 ~ 6-5: 造訪網站直到打開測站清單
+            get_CODis_to_open_stn_list(driver, wait)
 
             # Step 6-6: 找到測站坐落在哪一個資料列，如果找到了，用Selenium driver定位該列最右側趨勢圖icon，並點擊
             xpath = f"//tr[.//div[contains(text(), '{station_id}')]]//div[i[contains(@class, 'fa-chart-line')]]"
@@ -73,9 +98,58 @@ def crawler_CODis_to_dowload_data(driver: webdriver, wait: WebDriverWait, statio
             print("\t點擊chart鈕成功")
             time.sleep(2)
 
-            crawler_CODis_select_download(driver, wait,
-                                          target_year, target_month, target_monthday)
-            time.sleep(3)
+            # Step 6-7: 點開日期選單
+            date_input_btn = wait.until(EC.element_to_be_clickable(
+                (By.XPATH, '//*[@id="main_content"]/section[2]/div/div/section/div[5]/div[1]/div[1]/label/div/div[2]/div[1]/input')))
+            driver.execute_script("arguments[0].click()", date_input_btn)
+            print("\t成功點開日期選單")
+
+            # Step 6-8: 點開年份下拉式選單
+            y_menu_xpath = "//div[contains(@class, 'vdatetime-popup__year')]"
+            y_menu_btn = wait.until(
+                EC.element_to_be_clickable((By.XPATH, y_menu_xpath)))
+            driver.execute_script("arguments[0].click()", y_menu_btn)
+            print("\t成功點開年份下拉式選單")
+
+            # Step 6-9: 選擇年份
+            y_xpath = f"//div[contains(@class, 'vdatetime-year-picker__item') and contains(text(), '{target_year}')]"
+            year_select = wait.until(
+                EC.element_to_be_clickable((By.XPATH, y_xpath)))
+            driver.execute_script("arguments[0].click()", year_select)
+            print(f"\t成功選到{target_year}年")
+
+            # Step 6-10: 點開月日下拉式選單
+            # 以下兩種xpath都定位得到。
+            # submenu_xpath = '//*[@id="main_content"]/section[2]/div/div/section/div[5]/div[1]/div[1]/label/div/div[2]/div[1]/div/div[2]/div[1]/div[2]'
+            month_date_xpath = "//div[contains(@class, 'vdatetime-popup__date')]"
+            month_date_btn = wait.until(EC.element_to_be_clickable(
+                (By.XPATH, month_date_xpath)))
+            driver.execute_script("arguments[0].click()", month_date_btn)
+            print(f"\t成功點開月日下拉式選單")
+
+            # Step 6-11: 選擇月份
+            m_xpath = f"//div[contains(@class, 'vdatetime-month-picker__item') and contains(text(), '{target_month}月')]"
+            month_select = wait.until(
+                EC.element_to_be_clickable((By.XPATH, m_xpath)))
+            driver.execute_script("arguments[0].click()", month_select)
+            print(f"\t成功選到{target_month}月")
+
+            # Step 6-12: 選擇日期
+            md_xpath = f"//div[contains(@class, 'vdatetime-calendar__month__day')]//span[contains(text(), '{target_monthday}')]"
+            monthday_select = wait.until(
+                EC.element_to_be_clickable((By.XPATH, md_xpath)))
+            driver.execute_script("arguments[0].click()", monthday_select)
+            print(f"\t成功選到{target_monthday}日")
+            time.sleep(1)
+
+            # step 6-13: 觸發下載
+            csv_btn_xpath = '//*[@id="main_content"]/section[2]/div/div/section/div[5]/div[1]/div[2]/div'
+            csv_btn = wait.until(
+                EC.element_to_be_clickable((By.XPATH, csv_btn_xpath)))
+            time.sleep(1)
+            driver.execute_script("arguments[0].click()", csv_btn)
+            print(f"\t下載成功!")
+
             return None
 
         except Exception as e:
@@ -84,69 +158,10 @@ def crawler_CODis_to_dowload_data(driver: webdriver, wait: WebDriverWait, statio
                 f"\t下載失敗，無法下載到{target_year}-{target_month:02}-{target_monthday:02}。")
             if attempt == max_retry_time - 1:
                 print(f"---嘗試{max_retry_time}次仍下載失敗，請做問題排解。---")
+                error_log = f"{station_id}{target_year}-{target_month:02}-{target_monthday:02}"
+                return error_log
             else:
                 print(f"\t將嘗試第{attempt+2}次.......")
-    return None
-
-
-def crawler_CODis_select_download(driver: webdriver, wait: WebDriverWait, target_year: int,
-                                  target_month: int, target_monthday: int) -> None:
-    """This function is response for the download action following the function 
-    crawler_CODis_to_dowload_data() which focuses on visiting the specific station chart
-    and controlling the attempt times if exception occurs."""
-
-    # Step 6-7: 點開日期選單
-    date_input_btn = wait.until(EC.element_to_be_clickable(
-        (By.XPATH, '//*[@id="main_content"]/section[2]/div/div/section/div[5]/div[1]/div[1]/label/div/div[2]/div[1]/input')))
-    driver.execute_script("arguments[0].click()", date_input_btn)
-    print("\t成功點開日期選單")
-
-    # Step 6-8: 點開年份下拉式選單
-    y_menu_xpath = "//div[contains(@class, 'vdatetime-popup__year')]"
-    y_menu_btn = wait.until(
-        EC.element_to_be_clickable((By.XPATH, y_menu_xpath)))
-    driver.execute_script("arguments[0].click()", y_menu_btn)
-    print("\t成功點開年份下拉式選單")
-
-    # Step 6-9: 選擇年份
-    y_xpath = f"//div[contains(@class, 'vdatetime-year-picker__item') and contains(text(), '{target_year}')]"
-    year_select = wait.until(
-        EC.element_to_be_clickable((By.XPATH, y_xpath)))
-    driver.execute_script("arguments[0].click()", year_select)
-    print(f"\t成功選到{target_year}年")
-
-    # Step 6-10: 點開月日下拉式選單
-    # 以下兩種xpath都定位得到。
-    # submenu_xpath = '//*[@id="main_content"]/section[2]/div/div/section/div[5]/div[1]/div[1]/label/div/div[2]/div[1]/div/div[2]/div[1]/div[2]'
-    month_date_xpath = "//div[contains(@class, 'vdatetime-popup__date')]"
-    month_date_btn = wait.until(EC.element_to_be_clickable(
-        (By.XPATH, month_date_xpath)))
-    driver.execute_script("arguments[0].click()", month_date_btn)
-    print(f"\t成功點開月日下拉式選單")
-
-    # Step 6-11: 選擇月份
-    m_xpath = f"//div[contains(@class, 'vdatetime-month-picker__item') and contains(text(), '{target_month}月')]"
-    month_select = wait.until(
-        EC.element_to_be_clickable((By.XPATH, m_xpath)))
-    driver.execute_script("arguments[0].click()", month_select)
-    print(f"\t成功選到{target_month}月")
-
-    # Step 6-12: 選擇日期
-    md_xpath = f"//div[contains(@class, 'vdatetime-calendar__month__day')]//span[contains(text(), '{target_monthday}')]"
-    monthday_select = wait.until(
-        EC.element_to_be_clickable((By.XPATH, md_xpath)))
-    driver.execute_script("arguments[0].click()", monthday_select)
-    print(f"\t成功選到{target_monthday}日")
-    time.sleep(1)
-
-    # step 6-13: 觸發下載
-    csv_btn_xpath = '//*[@id="main_content"]/section[2]/div/div/section/div[5]/div[1]/div[2]/div'
-    csv_btn = wait.until(
-        EC.element_to_be_clickable((By.XPATH, csv_btn_xpath)))
-    time.sleep(1)
-    driver.execute_script("arguments[0].click()", csv_btn)
-    print(f"\t下載成功!")
-    return None
 
 
 if __name__ == '__main__':
@@ -155,22 +170,26 @@ if __name__ == '__main__':
     driver.maximize_window()
     wait = WebDriverWait(driver, 10)
 
-    # Step 5: 指定觀測站與觀測年月日，先以一個測站的一年的數據試運轉
+    # step 5: 核對下載點是否存在。
+    stn_lst = crawler_CODis_existing_stn_list(driver, wait)
+
+    # # Step 5: 指定觀測站與觀測年月日，先以一個測站的一年的數據試運轉
     station_id = "467410"  # 臺南觀測站
     target_year = 2025
     start_month = 1
     end_month = 12
-
-    # 巢狀迴圈與calendar module找出合法日期
-    for m in range(start_month, end_month+1):
-        calendar_a_month = calendar.monthcalendar(
-            target_year, m)  # list of lists
-        for week in calendar_a_month:
-            for d in week:
-                if d != 0:
-                    # Step 6: 爬取天氣數據
-                    crawler_CODis_to_dowload_data(
-                        driver, wait, station_id, target_year, m, d)
-
+    if station_id in stn_lst:
+        # # 巢狀迴圈與calendar module找出合法日期
+        for m in range(start_month, end_month+1):
+            calendar_a_month = calendar.monthcalendar(
+                target_year, m)  # list of lists
+            for week in calendar_a_month:
+                for d in week:
+                    if d != 0:
+                        # Step 6: 爬取天氣數據
+                        crawler_CODis_to_dowload_data(
+                            driver, wait, station_id, target_year, m, d)
+    else:
+        print("網頁上找不到station ID, 請檢查資料表是否要更新")
     # 所有日期爬完以後，關閉Chromedriver
     driver.close()
