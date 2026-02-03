@@ -63,47 +63,47 @@ sql_col_map = {
 }
 
 
-def dataframe_first_load_to_mysql(sqlengine):
+def dataframe_first_load_to_mysql(sqlengine, final_df: pd.DataFrame, table_name: str) -> None:
     """Use to create TABLE with transformed data when first loading them
     onto a MySQL database. This function include the create a schema and 
     add neccessary primary key"""
     try:
         with sqlengine.connect() as conn:  # 資料表名稱自訂
-            final_df_A1.to_sql("Accident_A1", conn, if_exists="replace",
-                               chunksize=1024*1024, dtype=sql_col_map,
-                               index=False)  # 已經有accident_id了，不用多的index
+            final_df.to_sql(f"{table_name}", conn, if_exists="replace",
+                            chunksize=1024*1024, dtype=sql_col_map,
+                            index=False)  # 已經有accident_id了，不用多的index
             conn.execute(
-                text("""ALTER TABLE Accident_A1 ADD PRIMARY KEY (accident_id);"""))
+                text(f"""ALTER TABLE {table_name} ADD PRIMARY KEY (accident_id);"""))
             conn.execute(
-                text("""ALTER TABLE Accident_A1 CHANGE `longitude (WGS84)` `longitude (WGS84)` DECIMAL(10, 6) NOT NULL,
+                text(f"""ALTER TABLE {table_name} CHANGE `longitude (WGS84)` `longitude (WGS84)` DECIMAL(10, 6) NOT NULL,
                                                 CHANGE `latitude (WGS84)` `latitude (WGS84)` DECIMAL(10, 6) NOT NULL;"""))
 
             conn.execute(
-                text("""ALTER TABLE Accident_A1 COMMENT "113年(:accident_type)車禍事件記錄表" """), {"accident_type": "A1"})
+                text(f"""ALTER TABLE {table_name} COMMENT "113年(:accident_type)車禍事件記錄表" """), {"accident_type": "A1"})
 
             conn.execute(
-                text("""ALTER TABLE Accident_A1 ADD COLUMN Created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP; """))
+                text(f"""ALTER TABLE {table_name} ADD COLUMN Created_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP; """))
 
             conn.execute(
-                text("""ALTER TABLE Accident_A1 ADD COLUMN Created_by VARCHAR(50) NOT NULL; """))
+                text(f"""ALTER TABLE {table_name} ADD COLUMN Created_by VARCHAR(50) NOT NULL; """))
 
             conn.execute(
-                text("""ALTER TABLE Accident_A1 ADD COLUMN Updated_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP; """))
+                text(f"""ALTER TABLE {table_name} ADD COLUMN Updated_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP; """))
 
             conn.execute(
-                text("""ALTER TABLE Accident_A1 ADD COLUMN Updated_by VARCHAR(50) NOT NULL; """))
+                text(f"""ALTER TABLE {table_name} ADD COLUMN Updated_by VARCHAR(50) NOT NULL; """))
 
             conn.execute(
-                text("UPDATE Accident_A1 SET Created_by = (:user), Updated_by = (:user);"), {'user': "lucky460721@gmail.com"})
+                text(f"UPDATE {table_name} SET Created_by = (:user), Updated_by = (:user);"), {'user': "lucky460721@gmail.com"})
 
             conn.commit()  # 手動提交，確保變更生效
     except RuntimeError as re:
         print(f"錯誤!{re}")
     except Exception as e:
         print(f"發生非預期的錯誤：{e}")
-
     else:
-        print("資料表Accident_A1建立並寫入成功！")
+        print(f"資料表{table_name}建立並寫入成功！")
+        return None
 
 
 if __name__ == "__main__":
@@ -129,7 +129,8 @@ if __name__ == "__main__":
     db_name = "TESTDB"
     engine = create_engine(
         f"mysql+pymysql://{username}:{password}@{server}/{db_name}",)
-    dataframe_first_load_to_mysql(engine)
+    dataframe_first_load_to_mysql(engine, final_df_A1, "Accident_A1_113y")
+    # dataframe_first_load_to_mysql(engine, final_df_A2, "Accident_A2_113y")
 
     # (儲存方法二)建立與GCP VM上的MySQL server的連線
     # username = quote_plus(os.getenv("mysql_username"))
