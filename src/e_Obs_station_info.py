@@ -2,10 +2,12 @@ from pathlib import Path
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
-from datetime import datetime, date, timezone, timedelta
+from datetime import datetime, timedelta
 
 
-def check_web_updated_or_not(stdIDurl: str) -> bool:
+def web_is_updated(stdIDurl: str, crawling_period: int, today: datetime) -> bool:
+    """Check if webpage was updated since the last web crawling."""
+
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"}
     response = requests.get(stdIDurl, headers=headers,
@@ -22,9 +24,9 @@ def check_web_updated_or_not(stdIDurl: str) -> bool:
         # 轉成datetime型別，並與“今天以前2週的日期”比對，確定是否在2週前爬蟲過後，網頁有刷新
         recent_update_date = datetime.strptime(
             recent_update_date_str, "%Y/%m/%d")
-        today = datetime.now()
-        two_wks_before_today = (today - timedelta(days=14))
-
+        two_wks_before_today = (today - timedelta(days=crawling_period))
+        print(f"網頁更新日期為: {recent_update_date}",
+              f"，今日以前兩週是: {two_wks_before_today}")
     return two_wks_before_today.date() < recent_update_date.date()  # 有刷新則回傳True
 
 
@@ -67,20 +69,41 @@ def crawler_stn_info(stdIDurl: str) -> dict:
         return station_info
 
 
-# 從CODis取得現有運作的測站清單
-stn_url = "https://hdps.cwa.gov.tw/static/state.html"
-if check_web_updated_or_not(stn_url):
-    weather_obs_stations = crawler_stn_info(stn_url)  # 爬蟲執行
+def e_Obs_station(station_url: str, crawling_period: int) -> pd.DataFrame | list:
+    """Execute the functions, 'web_is_updated()' and 'crawler_stn_info()'
+    in order. If the given station_url(e.g. CODis氣象觀測資料開放網) is ever updated 
+    during crawling_period, then return a dataframe of current observation stations. 
+    Otherwise, return an empty list which means no requirement to web scraping yet."""
 
-# 轉成pandas dataframe物件
-df_weather_obs_stations = pd.DataFrame(weather_obs_stations)  # 可能863個測站
+    today = datetime.now()
+    if not web_is_updated(station_url, crawling_period, today):
+        # 爬蟲執行
+        weather_obs_stations = crawler_stn_info(station_url)
+
+        # 轉成pandas dataframe物件
+        df_raw_obs_stations = pd.DataFrame(weather_obs_stations)
+
+        # 備份資料源，存成csv
+        curr_dir = Path().resolve()
+        save_path = curr_dir/"raw_csv"/"obs_station"
+        save_path.mkdir(parents=True, exist_ok=True)
+        file_name = save_path/f"raw_obs_stations_{today.date()}.csv"
+        df_raw_obs_stations.to_csv(
+            file_name, encoding="utf-8-sig", index=False)  # 不用匯入index，因為站號已可做識別用。
+    else:
+        print("網頁未更新，不做爬蟲。")
+        # 生成空list
+        df_raw_obs_stations = []
+
+    return df_raw_obs_stations
+
+
+df_raw_obs_stations = e_Obs_station(
+    "https://hdps.cwa.gov.tw/static/state.html", 14)
 
 if __name__ == '__main__':
-    # (optional)存成csv，
-    # (optional)設定未來存檔資料夾路徑
+    # 以下是本地端測試區：存成csv
     curr_dir = Path().resolve()
-    save_path = curr_dir/"supplementary_weather_csv_from_CODiS"
-    save_path.mkdir(parents=True, exist_ok=True)
-    df_weather_obs_stations.to_csv(
+    df_raw_obs_stations.to_csv(
         # 不用匯入index，因為站號已經是有識別用了
-        save_path/"station_info_table.csv", encoding="utf-8-sig", index=False)
+        curr_dir/"station_info_table.csv", encoding="utf-8-sig", index=False)
