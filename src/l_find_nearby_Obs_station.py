@@ -1,27 +1,36 @@
 from t_find_nearby_Obs_station import nearby_Obs_stn
 import pandas as pd
-import geopandas as gpd  # poetry add geopandas。GeoPandas輔助判斷什麼叫「附近」、「重疊」。
-from sqlalchemy import create_engine, types, text
+from sqlalchemy import create_engine, types
 import os
 from dotenv import load_dotenv
+from urllib.parse import quote_plus
 
+# Step 1: 準備與本地端MySQL server的連線
+# load_dotenv()
+# username = quote_plus(os.getenv("mysqllocal_username"))
+# password = quote_plus(os.getenv("mysqllocal_password"))
+# server = "127.0.0.1:3306"
+# DB = "TESTDB"
+# engine = create_engine(f"mysql+pymysql://{username}:{password}@{server}/{DB}",)
+# writer = quote_plus(os.getenv("mail_address"))
 
+# or, Connect to GCP VM MySQL server
 load_dotenv()
-username = os.getenv("mysqllocal_username")
-password = os.getenv("mysqllocal_password")
-server = "127.0.0.1:3306"
-DB = "TESTDB"
-engine = create_engine(f"mysql+pymysql://{username}:{password}@{server}/{DB}",)
+username = quote_plus(os.getenv("mysql_username"))
+password = quote_plus(os.getenv("mysql_password"))
+server = "127.0.0.1:3307"
+DB = "test_weather"
+engine = create_engine(
+    f"mysql+pymysql://{username}:{password}@{server}/{DB}",)
+writer = quote_plus(os.getenv("mail_address"))
 
-# 以新的資料表存入SQL。create or replace
-dtype = {"accident_id": types.VARCHAR(100),
-         "accident_date": types.DATE,
-         "accident_time": types.TIME,
-         "state_valid_from": types.DATE,
-         "station_record_id": types.INTEGER,
-         "station_id": types.VARCHAR(10),
-         "distance": types.DECIMAL(10, 6),
-         "rank_of_distance": types.INTEGER,
-         }
-nearby_Obs_stn.to_sql("accident_nearby_obs_stn", con=engine.connect(),
-                      if_exists="replace", dtype=dtype, index=False)
+try:
+    with engine.begin() as conn:
+        # 存入SQL server。append
+        nearby_Obs_stn["Created_by"] = writer
+        nearby_Obs_stn.to_sql("Accident_nearby_obs_stn", con=conn, index=False,
+                              if_exists="append", method="multi", chunksize=1000)
+except Exception as e:
+    print(f"Error: {e}")
+else:
+    print("資料表Accident_nearby_obs_stn成功插入！")
