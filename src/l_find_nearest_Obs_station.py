@@ -62,7 +62,6 @@ def dataframe_first_load_to_mysql(sqlengine, final_df: pd.DataFrame,
             conn.execute(
                 text(f"UPDATE {table_name} SET Created_by = (:user), Updated_by = (:user);"), {'user': "lucky460721@gmail.com"})
 
-            conn.commit()
     except RuntimeError as re:
         print(f"錯誤!{re}")
     except Exception as e:
@@ -89,7 +88,6 @@ def dataframe_first_load_to_mysql(sqlengine, final_df: pd.DataFrame,
 #                             SET Updated_on = NOW();"""))
 
 #     conn.execute(text("""DROP TABLE tmp_station_near_accidents;"""))
-#     conn.commit()
 
 #     print("更新完成！")
 if __name__ == "__main__":
