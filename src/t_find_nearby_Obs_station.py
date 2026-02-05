@@ -4,6 +4,8 @@ from sqlalchemy import create_engine, types, text
 from pathlib import Path
 import os
 from dotenv import load_dotenv
+from urllib.parse import quote_plus
+from datetime import datetime
 
 
 def find_nearby_Obs_stn_in_buffer_area(accident_df: pd.DataFrame,
@@ -12,7 +14,7 @@ def find_nearby_Obs_stn_in_buffer_area(accident_df: pd.DataFrame,
     gdf_Accident = gpd.GeoDataFrame(accident_df,
                                     # geometry 把經緯度字串轉成pandas看得懂的"點(Point)"，並放在geometry這新的一欄。
                                     geometry=gpd.points_from_xy(
-                                        accident_df["longitude (WGS84)"], accident_df["latitude (WGS84)"]),
+                                        accident_df["longitude"], accident_df["latitude"]),
                                     crs="EPSG:4326",)
 
     gdf_Obs_stn = gpd.GeoDataFrame(station_df,
@@ -45,13 +47,13 @@ def find_nearby_Obs_stn_in_buffer_area(accident_df: pd.DataFrame,
         nearby_Obs_stn["geometry_right"])
 
     # Step2-7: 踢除不需呈現的欄位
-    nearby_Obs_stn = nearby_Obs_stn[["accident_id", "accident_date", "accident_time",
+    nearby_Obs_stn = nearby_Obs_stn[["accident_id", "accident_datetime",
                                     "Station_record_id", "Station_id_left",
                                      "State_valid_from_left", "distance"]]
 
     # Step2-8: 剔除State_valid_from_left晚於accident_date的資料表，因為此情境會無法順利取得accident_date天氣
     nearby_Obs_stn = nearby_Obs_stn[nearby_Obs_stn["State_valid_from_left"] <
-                                    nearby_Obs_stn["accident_date"]]
+                                    nearby_Obs_stn["accident_datetime"]]
 
     # Step2-9: 為每個事故地點排出2個最近的觀測站，並且有標記名次(近者排名1、遠則排名2)
 
@@ -63,57 +65,70 @@ def find_nearby_Obs_stn_in_buffer_area(accident_df: pd.DataFrame,
 
     # 修改欄位命名
     nearby_two_stn.columns = [
-        "accident_id", "accident_date", "accident_time",
+        "accident_id", "accident_datetime",
         "station_record_id", "station_id",
         "state_valid_from", "distance", "rank_of_distance"]
 
     # 確保一下data type沒跑掉，尤其是日期時間。
-    nearby_two_stn["accident_date"] = pd.to_datetime(
-        nearby_two_stn["accident_date"], "coerce", format="mixed").dt.strftime("%Y-%m-%d")
+    nearby_two_stn["accident_datetime"] = pd.to_datetime(
+        nearby_two_stn["accident_datetime"], "coerce", format="mixed").dt.strftime("%Y-%m-%d %H:%M:%S")
     nearby_two_stn["state_valid_from"] = pd.to_datetime(
         nearby_two_stn["state_valid_from"], "coerce", format="mixed").dt.strftime("%Y-%m-%d")
-    nearby_two_stn["accident_time"] = nearby_two_stn["accident_time"].astype(
-        str).str.replace("0 days ", "")
     return nearby_two_stn
 
 
-# Step1: 讀取歷史事故資料之主表 與 觀測站基本地理資訊資料表
-load_dotenv()
-username = os.getenv("mysqllocal_username")
-password = os.getenv("mysqllocal_password")
-server = "127.0.0.1:3306"
-DB = "TESTDB"
-engine = create_engine(f"mysql+pymysql://{username}:{password}@{server}/{DB}",)
-try:
-    with engine.connect() as conn:
-        df_A1 = pd.read_sql("""SELECT *
-                                FROM Accident_A1_113y""", con=conn)
-        df_A2 = pd.read_sql("""SELECT *
-                                FROM Accident_A2_113y""", con=conn)
-        df_Obs_stn = pd.read_sql("""SELECT `Station_record_id`, `Station_id`, 
-                                           `Station_longitude_WGS84`, 
-                                           `Station_latitude_WGS84`, `State_valid_from`
-                                        FROM Obs_stations
-                                            WHERE Station_working_state = 'Running';
-                                 """, con=conn)
+def get_table_from_sqlserver(database: str, dql_text) -> pd.DataFrame:
+    """Read the desingated table in MySQL server. """
+    # Step 2: 讀取現在資料表中的既有資料
+    # Step 2-1: 準備與本地端MySQL server的連線
+    # load_dotenv()
+    # username = quote_plus(os.getenv("mysqllocal_username"))
+    # password = quote_plus(os.getenv("mysqllocal_password"))
+    # server = "127.0.0.1:3306"
+    # db_name = database
+    # conn = create_engine(
+    #     f"mysql+pymysql://{username}:{password}@{server}/{db_name}",).connect()
+    # writer = quote_plus(os.getenv("mail_address"))
 
-        # Step2: 轉換座標，找尋周圍的氣象觀測站
-        A1_nearby_Obs_stn = find_nearby_Obs_stn_in_buffer_area(
-            df_A1, df_Obs_stn)
-        A2_nearby_Obs_stn = find_nearby_Obs_stn_in_buffer_area(
-            df_A2, df_Obs_stn)
-except Exception as e:
-    print(f"Error!!{e}")
-else:
-    nearby_Obs_stn = pd.concat([A1_nearby_Obs_stn, A2_nearby_Obs_stn])
+    # 或Step 2-1: 準備與GCP VM上的MySQL server的連線
+    load_dotenv()
+    username = quote_plus(os.getenv("mysql_username"))
+    password = quote_plus(os.getenv("mysql_password"))
+    server = "127.0.0.1:3307"
+    db_name = database
+    conn = create_engine(
+        f"mysql+pymysql://{username}:{password}@{server}/{db_name}",).connect()
+    writer = quote_plus(os.getenv("mail_address"))
+    df = pd.read_sql(dql_text, conn)
+    return df
+
+
+def t_find_nearby_Obs_station():
+    try:
+        # Step 1: 讀取事故資訊表與Obs_stations
+        df_acc = get_table_from_sqlserver(
+            "test_accident", text("""SELECT * FROM accident_sq1_main"""))
+
+        df_Obs_stn = get_table_from_sqlserver("test_weather", text("""SELECT `Station_record_id`, `Station_id`, 
+                                                                `Station_longitude_WGS84`, 
+                                                                `Station_latitude_WGS84`, `State_valid_from`
+                                                                FROM Obs_stations
+                                                                    WHERE Station_working_state = 'Running';
+                                                            """))
+
+        # Step 2: 轉換座標，找尋周圍的氣象觀測站
+        nearby_Obs_stn = find_nearby_Obs_stn_in_buffer_area(df_acc, df_Obs_stn)
+    except Exception as e:
+        print(f"Error: {e}")
+    return nearby_Obs_stn
+
+
+nearby_Obs_stn = t_find_nearby_Obs_station()
 
 if __name__ == "__main__":
+    # 以下是本地端測試區：存成csv備份
     curr_dir = Path().resolve()
-    save_to_dir = curr_dir/"accident_nearby_obs_stn"
-    save_to_dir.mkdir(parents=True, exist_ok=True)
-    A1_nearby_Obs_stn.to_csv(save_to_dir/"A1_nearby_Obs_station.csv",
-                             encoding="utf-8-sig", index=False)
-    A2_nearby_Obs_stn.to_csv(save_to_dir/"A2_nearby_Obs_station.csv",
-                             encoding="utf-8-sig", index=False)
-    nearby_Obs_stn.to_csv(save_to_dir/"nearby_Obs_station.csv",
-                          encoding="utf-8-sig", index=False)
+    save_path = curr_dir/"processed_csv"/"accident_nearby_obs_stn"
+    save_path.mkdir(parents=True, exist_ok=True)
+    filename = save_path/f"accident_nearby_obs_stn_{datetime.now().date()}.csv"
+    nearby_Obs_stn.to_csv(filename, encoding="utf-8-sig", index=False)
