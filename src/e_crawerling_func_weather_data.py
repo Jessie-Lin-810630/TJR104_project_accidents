@@ -14,7 +14,7 @@ import calendar  # 生成合法日曆日期，避免選到不存在的日期
 
 #  Step 1: 設定未來存檔資料夾路徑
 curr_dir = Path().resolve()
-save_path = curr_dir/"supplementary_weather_csv_from_CODiS"
+save_path = curr_dir/"raw_csv"/"daily_Weather_data"
 save_path.mkdir(parents=True, exist_ok=True)
 
 #  Step 2: 建立service & options物件
@@ -73,7 +73,7 @@ def crawler_CODis_existing_stn_list(driver: webdriver, wait: WebDriverWait) -> l
 
 def crawler_CODis_to_dowload_data(driver: webdriver, wait: WebDriverWait, station_id: str,
                                   target_year: int, target_month: int, target_monthday: int,
-                                  max_retry_time=3) -> None:
+                                  max_retry_time=3) -> None | str:
     """This function featuring crawlering from the website CODis by the 
     following actions: Get in the web page, 
     select the default observation station classes(自動雨量站、自動氣象站、署屬有人站、農業站), 
@@ -165,6 +165,7 @@ def crawler_CODis_to_dowload_data(driver: webdriver, wait: WebDriverWait, statio
 
 
 if __name__ == '__main__':
+    # 以下是本地端測試區
     #  Step 4: options備妥，可建立瀏覽器控制物件，並啟動瀏覽器。
     driver = webdriver.Chrome(service=service, options=options)
     driver.maximize_window()
