@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 def create_obs_stations_table(engine, table_name: str) -> None:
-    """Use to create TABLE onto a MySQL database. This function include the create a table and 
+    """Use to create TABLE onto a MySQL database. This function include the create a table and
     add neccessary primary key"""
     try:
         with engine.connect() as conn:
@@ -21,13 +21,14 @@ def create_obs_stations_table(engine, table_name: str) -> None:
                                 `State_valid_from` DATE COMMENT '運作狀態起始日',
                                 `State_valid_to` DATE DEFAULT(DATE("9999-12-31")) COMMENT '運作狀態結束日',
                                 `Remark` TEXT COMMENT '備註',
-                                `Created_on` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '建立日期',
-                                `Created_by` VARCHAR(50) COMMENT '建立者',
-                                `Updated_on` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '最近修改日期',
+                                `Created_on` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '建立日期',
+                                `Created_by` VARCHAR(50) NOT NULL COMMENT '建立者',
+                                `Updated_on` TIMESTAMP COMMENT '最近修改日期',
                                 `Updated_by` VARCHAR(50) COMMENT '修改者',
                                 PRIMARY KEY (`Station_record_id`),
+                                UNIQUE KEY UK_obs_idvfvt(`Station_id`, `State_valid_from`, `Station_working_state`),
                                 INDEX inx_ObsStn_StnId (`Station_id`))
-                                CHARSET=utf8mb4 
+                                CHARSET=utf8mb4
                                 COMMENT '各觀測站天氣觀測結果';""")
 
             conn.execute(ddl_text)
@@ -41,12 +42,22 @@ def create_obs_stations_table(engine, table_name: str) -> None:
 
 
 if __name__ == "__main__":
+    # curr_wd = Path().resolve()
+    # load_dotenv(str(curr_wd/"src"/".env"))
+    # username = quote_plus(os.getenv("mysqllocal_username"))
+    # password = quote_plus(os.getenv("mysqllocal_password"))
+    # server = "127.0.0.1:3306"
+    # DB = "TESTDB"
+    # engine = create_engine(
+    #     f"mysql+pymysql://{username}:{password}@{server}/{DB}",)
+
+    # or, Connect to GCP VM MySQL server
     curr_wd = Path().resolve()
     load_dotenv(str(curr_wd/"src"/".env"))
-    username = quote_plus(os.getenv("mysqllocal_username"))
-    password = quote_plus(os.getenv("mysqllocal_password"))
-    server = "127.0.0.1:3306"
-    DB = "TESTDB"
+    username = quote_plus(os.getenv("mysql_username"))
+    password = quote_plus(os.getenv("mysql_password"))
+    server = "127.0.0.1:3307"
+    DB = "test_weather"
     engine = create_engine(
         f"mysql+pymysql://{username}:{password}@{server}/{DB}",)
 
