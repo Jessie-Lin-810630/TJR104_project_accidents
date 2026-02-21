@@ -192,7 +192,8 @@ def weatherdata_append_to_mysql(batch_df: pd.DataFrame, engine, table_name: str,
                             if_exists='append',
                             index=False,
                             dtype=dtype,
-                            method='multi')  # 使用 method='multi' 加速
+                            method='multi',
+                            chunksize=200)  # 使用 method='multi' 加速
     except Exception as e:
         error_code, *error_msg = e.args
         print(f"Error! {error_code}")
@@ -212,14 +213,14 @@ engine = create_engine(
 writer = quote_plus(os.getenv("mail_address"))
 
 # 或是連GCP上的MySQL server
-# load_dotenv()
-# username = quote_plus(os.getenv("mysql_username"))
-# password = quote_plus(os.getenv("mysql_password"))
-# server = "127.0.0.1:3307"
-# db_name = "test_weather"
-# engine = create_engine(
-#     f"mysql+pymysql://{username}:{password}@{server}/{db_name}",)
-# writer = quote_plus(os.getenv("mail_address"))
+load_dotenv()
+gcpusername = quote_plus(os.getenv("mysql_username"))
+gcppassword = quote_plus(os.getenv("mysql_password"))
+gcpserver = "127.0.0.1:3307"
+gcpdb_name = "test_weather"
+gcpengine = create_engine(
+    f"mysql+pymysql://{gcpusername}:{gcppassword}@{gcpserver}/{gcpdb_name}",)
+writer = quote_plus(os.getenv("mail_address"))
 
 
 # Step 3: soucrce_dir下面的子資料夾是按觀測日期分類命名，故可資料夾內讀取各測站同日的天氣觀測數據csv file，做以下清理：
@@ -242,7 +243,7 @@ for dir in source_dir.iterdir():  # dt=2026-01-01、dt=2025-12-31..
 
         # Step 4: 匯入MySQL
         weatherdata_append_to_mysql(
-            concat_df, engine, "Historical_weather_data", dtype_to_sql, writer)
+            concat_df, gcpengine, "Historical_weather_data", dtype_to_sql, writer)
 
         # Step 5 (optional): 存成csv
         # weatherdata_save_as_csv(

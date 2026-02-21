@@ -124,7 +124,7 @@ def t_find_nearby_Obs_station():
 
 
 nearby_Obs_stn = t_find_nearby_Obs_station()
-
+print(nearby_Obs_stn.info())
 if __name__ == "__main__":
     # 以下是本地端測試區：存成csv備份
     curr_dir = Path().resolve()

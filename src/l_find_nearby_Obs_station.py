@@ -21,7 +21,10 @@ password = quote_plus(os.getenv("mysql_password"))
 server = "127.0.0.1:3307"
 DB = "test_weather"
 engine = create_engine(
-    f"mysql+pymysql://{username}:{password}@{server}/{DB}",)
+    f"mysql+pymysql://{username}:{password}@{server}/{DB}",
+    pool_pre_ping=True,  # 核心：確保連線有效
+    pool_recycle=300,    # 每5分鐘強制重整連線
+    connect_args={'connect_timeout': 60})
 writer = quote_plus(os.getenv("mail_address"))
 
 try:
@@ -29,7 +32,7 @@ try:
         # 存入SQL server。append
         nearby_Obs_stn["Created_by"] = writer
         nearby_Obs_stn.to_sql("Accident_nearby_obs_stn", con=conn, index=False,
-                              if_exists="append", method="multi", chunksize=1000)
+                              if_exists="append", method="multi", chunksize=200)
 except Exception as e:
     print(f"Error: {e}")
 else:

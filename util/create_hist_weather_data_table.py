@@ -5,21 +5,21 @@ from urllib.parse import quote_plus
 from pathlib import Path
 
 # 建立Weather_data資料表
-load_dotenv("./src/.env")
-username = os.getenv("mysqllocal_username")
-password = os.getenv("mysqllocal_password")
-server = "127.0.0.1:3306"
-DB = "TESTDB"
-engine = create_engine(f"mysql+pymysql://{username}:{password}@{server}/{DB}",)
+# load_dotenv("./src/.env")
+# username = os.getenv("mysqllocal_username")
+# password = os.getenv("mysqllocal_password")
+# server = "127.0.0.1:3306"
+# DB = "TESTDB"
+# engine = create_engine(f"mysql+pymysql://{username}:{password}@{server}/{DB}",)
 
 # or, Connect to GCP VM MySQL server
-# load_dotenv("./src/.env")
-# username = quote_plus(os.getenv("mysql_username"))
-# password = quote_plus(os.getenv("mysql_password"))
-# server = "127.0.0.1:3307"
-# DB = "test_weather"
-# engine = create_engine(
-#     f"mysql+pymysql://{username}:{password}@{server}/{DB}",)
+load_dotenv("./src/.env")
+username = quote_plus(os.getenv("mysql_username"))
+password = quote_plus(os.getenv("mysql_password"))
+server = "127.0.0.1:3307"
+DB = "test_weather"
+engine = create_engine(
+    f"mysql+pymysql://{username}:{password}@{server}/{DB}",)
 
 
 def create_hist_weahter_data_table(engine, table_name: str) -> None:

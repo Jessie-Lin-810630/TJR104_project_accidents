@@ -76,7 +76,7 @@ def e_Obs_station(station_url: str, crawling_period: int) -> pd.DataFrame | list
     Otherwise, return an empty list which means no requirement to web scraping yet."""
 
     today = datetime.now()
-    if not web_is_updated(station_url, crawling_period, today):
+    if web_is_updated(station_url, crawling_period, today):
         # 爬蟲執行
         weather_obs_stations = crawler_stn_info(station_url)
 
