@@ -1,39 +1,64 @@
-# TJR104_project_accidents
-For practice on the traffic accidents
+# Traffic Accident ETL & Visualization Project
 
-# The scripts in dir ./src/ could be executed by following the order:
-1. Download the csv files that recording the Taiwan traffic accidents from (https://data.gov.tw/dataset/12818) and (https://data.gov.tw/dataset/13139). Save in your local file system.
+# Purpose
+This repository demonstrates an end-to-end ETL (Extract, Transform, Load) pipeline for Taiwan traffic accident data, featuring a frontend dashboard built with Streamlit. The ultimate goal is to deploy the service as a microservice on Google Cloud Platform (GCP) using Cloud Run.
 
-2. Run [t_AccidentsA1A2_y113.py](src/t_AccidentsA1A2_y113.py) to transform the dirty data to the type fit Schema requirement in MySQL. You can also save the transformed data as new csv file before push to MySQL server optionally if server is not ready yet. When doing this, please directly run the script alone (i.e., make sure `__name__` = `__main__`").
-    1. [My learning notes for reminders](./learning_notes/learning_notes.md)
+# Developement workflow flow in each branch
+The project is organized into four sequential branches. Each branch represents a specific milestone in the development lifecycle, including its core functions, environment, and deliverables.
 
-3. Optionally, run [t_AccidentsA1A2_y113_at_fault_driver.py](src/t_AccidentsA1A2_y113_at_fault_driver.py) to further filtering the data, leaving the data of at-fault driver ONLY(只留下肇事順位一的最大責任者的資料). By doing this, we can quickly generate new csv file to report how many tracffic accidents, when to happen, location of accident.
-    1. [My learning notes for reminders](/learing_notes/learning_notes.md)
-
-4. Run [l_AccidentsA1A2_y113.py](src/l_AccidentsA1A2_y113.py) to load the transformed data after running the script mentioned in 2. or 3. SQL server can be deployed in GCP or local site. Connection methods for these two scenarios are included in this .py.
-    1. [My learning notes for reminders](/learing_notes/learning_notes.md)
-
-5. Run [e_Obs_station_info.py](src/e_Obs_station_info.py) to extract the geometry data of weather observation stations in Taiwan. The observation info will be saved as a new csv file.
-    1. [My learning notes for reminders](/learing_notes/learning_notes.md)
-
-6. Run [t_Obs_station_info.py](src/t_Obs_station_info.py) to clean the wanted data and columns. You can save the transformed data as new csv file before push to MySQL server optionally if server is not ready yet. When doing this, please directly run the script alone (i.e., make sure `__name__` = `__main__`").
-
-7. Run [l_Obs_station_info.py](src/l_Obs_station_info.py) to load the transformed geometry info of observation stations to MySQL server.
-    1. [My learning notes for reminders](/learing_notes/learning_notes.md)
-
-8. Run [t_find_nearest_Obs_station.py](src/t_find_nearest_Obs_station.py) to find the nearest observation station at each accident location. In this srcipt, Geopandas module is imported to perform the spatial join. It finally returns a new pd.DataFrame with two columns:
-        (1) 'accident_id': Matched accident identifiers.
-        (2) 'Station_ID': Nearest observation station ID for each accident.
-        (3) 'distances': Distances between the station and the accident location.
-    1. [My learning notes for reminders](/learing_notes/learning_notes.md)
-
-9. Import the variable defined in t_find_nearest_Obs_station.py , and then run [l_find_nearest_Obs_station.py](src/l_find_nearest_Obs_station.py) to load the table describing relation btw station_Id and nearest_Obs_id to the SQL server (either Local or GCP ).
-    1. [My learning notes for reminders](/learing_notes/learning_notes.md)
-
-10. Run [e_find_accidentday_weather_data.py](src/e_find_accidentday_weather_data.py) to check how many weather data should be extract from the GOV-CODis website a weather data open platform (https://codis.cwa.gov.tw/StationData). In this script, must import the self-definded crawerling function on GOV-CODis website a weather data open platform, from the srcipt, [e_crawerling_func_weather_data.py](src/e_crawerling_func_weather_data.py) where use Selenium module.
-    ## 待解決、討論問題：
-    1. 實作結果爬取1500個csv (前提是：一個觀測站一天有自己一份csv，1500場車禍幾乎需要下載1100-1500個csv)，需要耗時3.5小時。需要仰賴自動排程與雲端服務。
-    2. 這裡特別在爬蟲完成時會自動呼叫一個整理資料夾的函式來收尾，把收集了大量csv的資料夾進行整理，整理後下載地點的資料夾結構會轉變為csvpool/dt=某年某月某日/.站別-某年某月某日.csv。 此舉用意留為評估是否要用Bigquery的分區概念存放這些csv，將查詢速度達到提高，而dt=....的資料夾架構是Bigquery的要求。 此外也可以開始思考數據血緣的管理工具。
-    3. 如果遇到Webdriver-manager下載的Chromedriver沒有跟上chrome版本 -> [My learning notes for reminders](/learing_notes/learning_notes.md)
-
-11. Run [l_find_accidentday_weather_data.py](src/l_find_accidentday_weather_data.py) to concatenate the dataframe of all observation stations with the same obervation date. You can optionally save as CSV file (just recommended for development and test). At the end of the script, the concatenated result will be load into MySQL server (or Bigqurey data warehouse see the note in 第10點)。
+# Branch 1, name: "feature/etl-app"
+1. core func.: Establish the core ETL logic and ensure data insights are correctly visualized via Streamlit. This branch uses Poetry for dependency management and virtual environment control. All scripts must pass unit tests before being merged into subsequent branches.
+2. environment: python + MySQL on premises
+3. planned directories:
+    ```
+        my_project/
+            ├── src/
+            │   ├── transform.py       # ETL 核心邏輯
+            │   └── app.py             # Streamlit 程式碼
+            ├── tests/
+            │   └── test_transform.py  # Unittest 測試檔
+            ├── pyproject.toml         # Poetry 設定
+            ├── poetry.lock            # 精確版本鎖定
+            └── .env                   # 本地環境變數(e.g, DB_HOST=localhost)
+    ```
+# Branch 2, name: "feature/docker-integration"
+1. core func.: Containerize MySQL, Streamlit, and Apache Airflow. Airflow is utilized to schedule and automate ETL processes. This stage focuses on ensuring seamless communication and networking between containers.
+2. sources: merged from Branch 1 and pyproject.toml. ``Any modifications to database connections or service networking are handled in this branch.``
+3. planned directories:
+    ```
+        my-project/
+            ├── dags/                  # + 存放Airflow DAGs
+            ├── docker/                # + 容器定義
+            │   ├── Dockerfile.airflow
+            │   └── Dockerfile.streamlit
+            ├── src/                   # (From Branch 1)
+            ├── tests/                 # (From Branch 1)
+            ├── docker-compose.yml     # + 一鍵啟動所有容器
+            ├── pyproject.toml         # (From Branch 1)
+            └── requirements.txt       # + 執行poetry export產出
+    ```
+# Branch 3, name: "develop/CI"
+1. core func.: Implement GitHub Actions to automate the build and push processes. This ensures that Docker images are automatically validated and stored in a container registry upon code updates.
+2. sources: all components from Branch 2.
+3. planned directories:
+    ```
+        my-project/
+            ├── .github/           # + GitHub Actions自動化腳本
+            │   └── workflows/
+            │       └── ci-cd.yml  # 測試build image並push到Artifact Registry
+            ├── dags/
+            ├── docker/
+            ├── src/
+            ├── docker-compose.yml
+            ├── requirements.txt
+            └── .env.example       # + 提供給雲端環境的變數範本
+    ```
+# Branch 4, name: "main/production"
+1. core func: Production-ready branch for stable service deployment on GCP.
+2. sources: Merged from develop/CI after all CI/CD checks pass.
+3. directories:
+    ```
+        my-project/
+            ├── (those from branch 3)
+            └── README.md  # 也就是本文。且未來會再附上Cloud Run網址與VM操作說明
+    ```
