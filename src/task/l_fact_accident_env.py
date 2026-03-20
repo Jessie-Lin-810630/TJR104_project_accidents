@@ -1,0 +1,44 @@
+import pandas as pd
+from sqlalchemy import text
+from src.util.create_engine_to_mysql import get_pymysql_conn_to_mysql
+from src.task.t_fact_accident_env import df_fact_accident_env
+
+
+def l_fact_accident_env(df_fact_accident_env: pd.DataFrame,
+                        database: str | None = None) -> None:
+    """"""
+    # 準備INSERT資料表時需要的SQL語句，採用UPSERT
+    # 先準備INSERT部分
+    columns = ', '.join(df_fact_accident_env.columns)
+    placeholders = ', '.join(['%s'] * len(df_fact_accident_env.columns))
+
+    # 準備UPDATE的部分：故意只更新weather_condition。
+    update_part = "weather_condition=VALUES(weather_condition)"
+
+    # 組合出完整SQL語句
+    dml_str = f"""INSERT INTO fact_accident_env ({columns})
+                  VALUES ({placeholders})
+                  ON DUPLICATE KEY UPDATE {update_part};
+                """
+
+    # 6. 寫入資料表
+    print(f"====Inserting into table `fact_accident_env`....====")
+    try:
+        conn = get_pymysql_conn_to_mysql(database)
+        cursor = conn.cursor()
+        cursor.executemany(dml_str, df_fact_accident_env.values.tolist())
+        conn.commit()
+    except Exception as e:
+        print(f"Error on inserting into table, Error msg: {e}")
+        conn.rollback()
+    else:
+        print(f"====Successfully inserting into table `fact_accident_env`====")
+    finally:
+        cursor.close()
+        conn.close()
+    return None
+
+
+if __name__ == "__main__":
+    # 測試區
+    l_fact_accident_env(df_fact_accident_env, "traffic_accidents")

@@ -1,0 +1,44 @@
+import pandas as pd
+from sqlalchemy import text
+from src.util.create_engine_to_mysql import get_pymysql_conn_to_mysql
+from src.task.t_dim_lane_design import df_dim_lane_design
+
+
+def l_dim_lane_design(df_dim_lane_design: pd.DataFrame,
+                      database: str | None = None) -> None:
+    """"""
+    # 準備INSERT資料表時需要的SQL語句，採用UPSERT
+    # 先準備INSERT部分
+    columns = ', '.join(df_dim_lane_design.columns)
+    placeholders = ', '.join(['%s'] * len(df_dim_lane_design.columns))
+
+    # 準備UPDATE的部分：故意只更新lane_edge_marking。
+    update_part = "lane_edge_marking=VALUES(lane_edge_marking)"
+
+    # 組合出完整SQL語句
+    dml_str = f"""INSERT INTO dim_lane_design ({columns})
+                  VALUES ({placeholders})
+                  ON DUPLICATE KEY UPDATE {update_part};
+                """
+
+    # 6. 寫入資料表
+    print(f"====Inserting into table `dim_lane_design`....====")
+    try:
+        conn = get_pymysql_conn_to_mysql(database)
+        cursor = conn.cursor()
+        cursor.executemany(dml_str, df_dim_lane_design.values.tolist())
+        conn.commit()
+    except Exception as e:
+        print(f"Error on inserting into table, Error msg: {e}")
+        conn.rollback()
+    else:
+        print(f"====Successfully inserting into table `dim_lane_design`====")
+    finally:
+        cursor.close()
+        conn.close()
+    return None
+
+
+if __name__ == "__main__":
+    # 測試區
+    l_dim_lane_design(df_dim_lane_design, "traffic_accidents")
