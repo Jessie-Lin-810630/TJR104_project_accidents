@@ -23,9 +23,9 @@ def create_traffic_accident_tables(engine: Engine) -> None:
             ddl_text = text("""CREATE TABLE IF NOT EXISTS `dim_accident_day` (
                                     `day_id` INT AUTO_INCREMENT PRIMARY KEY NOT NULL COMMENT '日編號ID',
                                     `accident_date` DATE COMMENT '車禍日期',
-                                    `accident_weekday` INT COMMENT '車禍發生星期',
-                                    `is_holiday` VARCHAR(10) COMMENT '工作日、例行周末、國定假日',
-                                    `national_activity` TINYINT COMMENT '是否為全國性活動，例如：總統上任、公投日、國定假日',
+                                    `accident_weekday` VARCHAR(10) COMMENT '車禍發生星期',
+                                    `is_holiday` TINYINT COMMENT '是否放假',
+                                    `national_activity` VARCHAR(20) COMMENT '是否有全國性活動，例如：總統上任、公投日、國定假日',
                                     CONSTRAINT `uk_dim_accidentday_date` UNIQUE (`accident_date`)
                                     ) charset=utf8mb4 COMMENT '交通意外日維度表';
                             """)  # 預計5年只會有幾千筆日期，因此以accident_date作為唯一鍵確保業務邏輯不重複，day_id則作為surrogate key方便JOIN
@@ -53,7 +53,7 @@ def create_traffic_accident_tables(engine: Engine) -> None:
                                     `lane_divider_direction_minor` VARCHAR(20) COMMENT '車道分向設施子類別名稱',
                                     `lane_divider_main_general` VARCHAR(20) COMMENT '車道分道設施-快車道或一般車道間名稱''',
                                     `lane_divider_fast_slow` VARCHAR(20) COMMENT '車道分道設施-快慢車道間名稱',
-                                    `lane_edge_marking` TINYINT COMMENT '是否有路面邊線，對應原資料集''車道劃分設施-分道設施-路面邊線名稱''',
+                                    `lane_edge_marking` VARCHAR(2) COMMENT '是否有路面邊線，對應原資料集''車道劃分設施-分道設施-路面邊線名稱''',
                                     CONSTRAINT `uk_dim_lanedesign_dividerandedge` UNIQUE (`lane_divider_direction_major`, 
                                                                                           `lane_divider_direction_minor`,
                                                                                           `lane_divider_main_general`, 
