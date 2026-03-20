@@ -1,5 +1,7 @@
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
+import pymysql
+from pymysql import Connection
 import os
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
@@ -32,3 +34,25 @@ def create_engine_to_mysql(database: str | None = None) -> Engine:
                            pool_size=5, pool_recycle=3600, pool_pre_ping=True,
                            connect_args={"connect_timeout": 120})
     return engine
+
+
+def get_pymysql_conn_to_mysql(database: str | None) -> Connection:
+    """Create a pymysql Connection to connect to a MySQL database. More suitable for Upserting
+    than using Pandas.to_sql().
+    Parameters:
+        database (str | None): The name of the database to connect to.
+
+    Returns:
+        Connection: A pymysql Connection instance connected to the specified MySQL database."""
+    conn = pymysql.connect(host=host,
+                           port=int(port),
+                           user=username,
+                           password=password,
+                           database=database,
+                           charset="utf8mb4",
+                           autocommit=False,
+                           connect_timeout=60,      # 連線建立超時
+                           read_timeout=600,        # 讀取超時（適合大查詢）
+                           write_timeout=600,       # 寫入超時
+                           )
+    return conn
