@@ -86,7 +86,8 @@ def t_data_for_dim_accident_day(start_date: str,
 
     # 辨識星期幾，0代表星期一、1代表星期二、...、6代表星期日
     weekday_numbers = date_index.weekday.to_list()   # 1代表星期二、3代表星期四、0代表星期一
-    weekday_names = [WEEKDAY_NAME_MAP[weekday_language][n] for n in weekday_numbers]  # 數字轉星期名稱
+    language = "zh_tw" if weekday_language not in WEEKDAY_NAME_MAP.keys() else weekday_language
+    weekday_names = [WEEKDAY_NAME_MAP[language][n] for n in weekday_numbers]  # 數字轉星期名稱
 
     # 辨識是否為國定假日或全國性活動
     national_activity = [taiwan_national_activities.get(d, "無特殊活動") for d in date_obj]
