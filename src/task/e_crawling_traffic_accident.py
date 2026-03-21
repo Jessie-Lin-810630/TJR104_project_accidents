@@ -33,6 +33,8 @@ def find_download_links(urls: list[str], headers: dict) -> dict[str, str]:
     """
     download_links = {}
     for url in urls:
+        response = None
+        soup = None
         try:
             response = requests.get(url, headers=headers,
                                     verify=False, timeout=120)
@@ -40,33 +42,32 @@ def find_download_links(urls: list[str], headers: dict) -> dict[str, str]:
                 print(f"====成功訪問 {url}====")
                 soup = BeautifulSoup(response.text, 'html.parser')
         except requests.exceptions.Timeout as e:
-            print(f"response.status_code: {response.status_code}")
             print(f"Timeout occurred while fetching download links from {url}, "
                   f"error: {e}")
-        except requests.exceptions.ConnectionError:
-            print(f"response.status_code: {response.status_code}")
+        except requests.exceptions.ConnectionError as e:
             print(f"Connection error occurred while fetching download links from {url},"
                   f"error: {e}")
-        except requests.exceptions.HTTPError:
-            print(f"response.status_code: {response.status_code}")
+        except requests.exceptions.HTTPError as e:
             print(f"HTTP error occurred while fetching download links from {url},"
                   f"error: {e}")
         except Exception as e:
-            print("response.status_code: ", response.status_code)
             print(f"An error occurred while fetching download links from {url},"
                   f"error: {e}")
         else:
-            # page_topic = soup.find('h2', class_='print-title').text.strip()
-            if soup.select_one("#__nuxt > div > div > main > div.page > div.table.table--fixed.od-table.od-table--bordered.print-table > div:nth-child(2) > div:nth-child(2) > ul:nth-child(1) > li > span"):
-                page_topic = soup.select_one(
-                    "#__nuxt > div > div > main > div.page > div.table.table--fixed.od-table.od-table--bordered.print-table > div:nth-child(2) > div:nth-child(2) > ul:nth-child(1) > li > span")
-                page_topic = page_topic.text.strip().replace(".zip", "")
-            for a_tag in soup.find_all("a", title=re.compile("下載檔案")):
-                href = a_tag.get("href")
-                available_file_type = a_tag.get("title").replace("下載檔案", "").strip()
-                if href:
-                    print(f"====成功找到下載連結: {href}====")
-                    download_links[href] = (available_file_type, page_topic)
+            # Only process if soup was successfully created
+            if soup is not None:
+                # page_topic = soup.find('h2', class_='print-title').text.strip()
+                page_topic = None
+                if soup.select_one("#__nuxt > div > div > main > div.page > div.table.table--fixed.od-table.od-table--bordered.print-table > div:nth-child(2) > div:nth-child(2) > ul:nth-child(1) > li > span"):
+                    page_topic = soup.select_one(
+                        "#__nuxt > div > div > main > div.page > div.table.table--fixed.od-table.od-table--bordered.print-table > div:nth-child(2) > div:nth-child(2) > ul:nth-child(1) > li > span")
+                    page_topic = page_topic.text.strip().replace(".zip", "")
+                for a_tag in soup.find_all("a", title=re.compile("下載檔案")):
+                    href = a_tag.get("href")
+                    available_file_type = a_tag.get("title").replace("下載檔案", "").strip()
+                    if href:
+                        print(f"====成功找到下載連結: {href}====")
+                        download_links[href] = (available_file_type, page_topic)
     return download_links
 
 
