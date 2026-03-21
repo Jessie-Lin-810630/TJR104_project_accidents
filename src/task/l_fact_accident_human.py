@@ -23,19 +23,24 @@ def l_fact_accident_human(df_fact_accident_human: pd.DataFrame,
 
     # 6. 寫入資料表
     print(f"====Inserting into table `fact_accident_human`....====")
+    conn = None
+    cursor = None
     try:
         conn = get_pymysql_conn_to_mysql(database)
-        cursor = conn.cursor()
-        cursor.executemany(dml_str, df_fact_accident_human.values.tolist())
-        conn.commit()
+        if conn:
+            cursor = conn.cursor()
+            cursor.executemany(dml_str, df_fact_accident_human.values.tolist())
+            conn.commit()
     except Exception as e:
         print(f"Error on inserting into table, Error msg: {e}")
-        conn.rollback()
+        if conn:
+            conn.rollback()
     else:
         print(f"====Successfully inserting into table `fact_accident_human`====")
     finally:
-        cursor.close()
-        conn.close()
+        if conn:
+            cursor.close()
+            conn.close()
     return None
 
 
