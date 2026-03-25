@@ -1,6 +1,6 @@
 import pandas as pd
 from sqlalchemy import text
-from src.util.create_engine_to_mysql import create_engine_to_mysql
+from src.util.create_mysql_engine_or_database import create_engine_to_mysql
 
 
 def get_table_from_sqlserver(dql_str: str, *, database: str | None = None) -> pd.DataFrame:

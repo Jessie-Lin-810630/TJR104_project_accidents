@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 import pymysql
 from pymysql import Connection
@@ -56,3 +56,17 @@ def get_pymysql_conn_to_mysql(database: str | None) -> Connection:
                            write_timeout=600,       # 寫入超時
                            )
     return conn
+
+
+def create_database(engine: Engine, database_name: str) -> None:
+    """Inspect if the designed database exists and create it if not exists."""
+    try:
+        with engine.connect() as conn:
+            conn.execute(text(
+                f"CREATE DATABASE IF NOT EXISTS {database_name} CHARACTER SET utf8mb4;"))
+            print(f"Database '{database_name}' created successfully.")
+    except Exception as e:
+        print(f"An error occurred while creating the database: {e}")
+    finally:
+        engine.dispose()
+    return None
