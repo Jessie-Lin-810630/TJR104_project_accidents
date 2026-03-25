@@ -1,18 +1,5 @@
 from sqlalchemy import text, Engine
-from src.util.create_engine_to_mysql import create_engine_to_mysql
-
-
-def create_database(engine: Engine, database_name: str) -> None:
-    try:
-        with engine.connect() as conn:
-            conn.execute(text(
-                f"CREATE DATABASE IF NOT EXISTS {database_name} CHARACTER SET utf8mb4;"))
-            print(f"Database '{database_name}' created successfully.")
-    except Exception as e:
-        print(f"An error occurred while creating the database: {e}")
-    finally:
-        engine.dispose()
-    return None
+from src.util.create_mysql_engine_or_database import create_engine_to_mysql, create_database
 
 
 def create_traffic_accident_tables(engine: Engine) -> None:
