@@ -1,6 +1,6 @@
 import pandas as pd
 from sqlalchemy import text
-from src.util.create_engine_to_mysql import get_pymysql_conn_to_mysql
+from src.util.create_mysql_engine_or_database import get_pymysql_conn_to_mysql
 from src.task.t_fact_accident_env import df_fact_accident_env
 
 
