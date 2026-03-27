@@ -24,7 +24,22 @@ cities_per_region = {
 
 
 def find_tw_night_markets_list(url: str, headers: dict, cities_per_region: dict) -> str:
-    """"""
+    """
+    Request the url Wikipedia to get the list of night markets in Taiwan. 
+    The obtained list will be saved in a new csv file of which the file path is 
+    return value.
+
+    :param url: URL of Wikipedia summarizing the night markets in Taiwan.
+    :type url: str
+    :param headers: Headers required for Request.get() function.
+    :type headers: dict
+    :param cities_per_region: Dict to map the region that a night market is located
+    (north, south, west, east, outlying islands).
+    :type cities_per_region: dict
+
+    :returns: String of the path of generated csv file.
+    :rtype: str
+    """
 
     # 變數宣告
     response = None
@@ -73,7 +88,7 @@ def find_tw_night_markets_list(url: str, headers: dict, cities_per_region: dict)
 
                     # 取得夜市名稱
                     nightmarket_name = tds[0].text.strip()
-                    if "夜市" not in nightmarket_name or "商圈" not in nightmarket_name:
+                    if "夜市" not in nightmarket_name and "商圈" not in nightmarket_name:
                         continue
 
                     # 合法夜市名稱才能列入清單
@@ -108,7 +123,18 @@ load_dotenv()
 API_KEY = os.getenv("GOOGLE_MAP_API_KEY")
 
 
-def search_place_id(place_name):
+def search_place_id(place_name: str) -> None | str:
+    """
+    Call the GoogleMap Place API to request the place IDs of each
+    interested location.
+
+    :param place_name: location name or shop name (e.g. night market name)
+    :type place_name: str
+
+    :returns: If requests.Exception or not found ID, it will return None. 
+    Otherwise return the place ID.
+    :rtype: None or str
+    """
 
     base_url = "https://maps.googleapis.com/maps/api/place/findplacefromtext/json"
     params = {
@@ -139,7 +165,20 @@ def search_place_id(place_name):
     return None
 
 
-def get_place_details(place_id) -> dict:
+def get_place_details(place_id: str) -> dict | None:
+    """
+    Use the place ID and call the GoogleMap Place API to get detailed information
+    of a location, including name, rating, formatted_address, opening_hours, URL to GoogleMap
+    and geometry.
+
+    :param place_id: place ID registered in GoogleMap API
+    :type place_id: str
+
+    :returns: If requests.Exception or not found details, it will return None. 
+    Otherwise, return a python dict object decoded from the json-type response.
+    :rtype: dict or None
+    """
+
     base_url = "https://maps.googleapis.com/maps/api/place/details/json"
     params = {
         "place_id": place_id,
@@ -167,6 +206,20 @@ def get_place_details(place_id) -> dict:
 
 
 def e_crawling_nightmarket(csvfile_path: str | Path) -> str | None:
+    """
+    Extracting data:
+    Open the csv file that containing the night market name.
+    With them, call the GoogleMap API by the function get_place_id() and get_place_details()
+    to get the place details ot night markets in Taiwan. The place details is saved in new
+    json file.
+
+    :param csvfile_path: csv file path to open.
+    :type csvfile_path: str | Path
+
+    :returns: If requests.Exception,no founding ID/details or file I/O exceptioon, 
+    it will return None. Otherwise, the path of generated json file is returned.
+    :rtype: str | None
+    """
     if not API_KEY:
         return "找不到 API 金鑰，請確認 .env 檔"
 
@@ -218,5 +271,5 @@ def e_crawling_nightmarket(csvfile_path: str | Path) -> str | None:
 
 
 if __name__ == "__main__":
-    night_market_list_csv = find_tw_night_markets_list(night_markets_wiki_url, headers)
-    e_crawling_nightmarket(night_market_list_csv)
+    night_market_list_csv = find_tw_night_markets_list(night_markets_wiki_url, headers, cities_per_region)
+    # e_crawling_nightmarket(night_market_list_csv)
