@@ -5,12 +5,17 @@ from pymysql import Connection
 import os
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
+import redis
 
 load_dotenv()
 host = os.getenv("MYSQL_HOST")
 port = os.getenv("MYSQL_PORT")
 username = quote_plus(os.getenv("MYSQL_USER"))
 password = quote_plus(os.getenv("MYSQL_PASSWORD"))
+
+redis_host = os.getenv("REDIS_HOST")
+redis_port = os.getenv("REDIS_PORT")
+redis_password = os.getenv("REDIS_PASSWORD")
 
 
 def create_engine_to_mysql(database: str | None = None) -> Engine:
@@ -70,3 +75,23 @@ def create_database(engine: Engine, database_name: str) -> None:
     finally:
         engine.dispose()
     return None
+
+
+def create_redis_client(decode_response: bool = False):
+    # decode_responses=False 是關鍵設定。因為要存入 Pickle 二進位資料(DataFrame)
+    # 如果設為 True，Redis 會強制轉為字串，導致二進位資料損壞。
+    try:
+        REDIS_POOL = redis.ConnectionPool(host=redis_host,
+                                          port=int(redis_port),
+                                          password=redis_password,
+                                          decode_responses=False)
+        r = redis.Redis(connection_pool=REDIS_POOL)
+        r.ping()  # 測試連線
+    except Exception as e:
+        print(f"Error when connecting to Redis. Error msg: {e}!")
+    else:
+        if r is None:
+            print("Redis client is None, skipping cache")
+            return None
+        print("Successfully connect to Redis!")
+        return r
