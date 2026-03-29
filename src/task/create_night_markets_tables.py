@@ -1,5 +1,5 @@
 from sqlalchemy import text, Engine
-from src.util.create_mysql_engine_or_database import create_engine_to_mysql, create_database
+from src.util.create_db_engine_or_database import create_engine_to_mysql, create_database
 
 
 def create_night_market_tables(engine: Engine) -> None:
@@ -25,7 +25,8 @@ def create_night_market_tables(engine: Engine) -> None:
                         `northeast_longitude` DECIMAL(10,6) COMMENT '夜市東南端點經度',
                         `southwest_latitude` DECIMAL(10,6) COMMENT '夜市西南端緯度',
                         `southwest_longitude` DECIMAL(10,6) COMMENT '夜市西南端經度',
-                        `updated_on` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '更新時間日期',
+                        `created_on` TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '資料列插入時間日期',
+                        `updated_on` TIMESTAMP COMMENT '更新時間日期',
                         CONSTRAINT `uk_nm_latlonwkd` UNIQUE(`latitude`, 
                                                             `longitude`, 
                                                             `business_days_weekday`)
