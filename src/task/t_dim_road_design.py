@@ -37,11 +37,13 @@ def t_dim_road_design(csvfile_paths: list[str]) -> pd.DataFrame:
         all_df.append(single_df)
         print(f"成功讀取csv檔案: {file_path}。此輪得到列數: {len(single_df)}")
 
-    df_dim_road_design = pd.concat(all_df).drop_duplicates(subset=["road_type_primary_party",
-                                                                   "road_form_major",
-                                                                   "road_form_minor"])
-    df_dim_road_design = df_dim_road_design.reset_index(drop=True, inplace=False)
-    return df_dim_road_design
+    if all_df:
+        df_dim_road_design = pd.concat(all_df).drop_duplicates(subset=["road_type_primary_party",
+                                                                       "road_form_major",
+                                                                       "road_form_minor"])
+        df_dim_road_design = df_dim_road_design.reset_index(drop=True, inplace=False)
+        return df_dim_road_design
+    return pd.DataFrame()
 
 
 df_dim_road_design = t_dim_road_design(csvfile_paths=["/Users/little_po/Desktop/Project/04_Traffic_accidents/taiwan_traffic_accidents/test/processed_data/114年度A1交通事故資料.csv",

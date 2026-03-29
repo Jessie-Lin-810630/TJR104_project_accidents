@@ -1,5 +1,5 @@
 from sqlalchemy import text, Engine
-from src.util.create_mysql_engine_or_database import create_engine_to_mysql, create_database
+from src.util.create_db_engine_or_database import create_engine_to_mysql, create_database
 
 
 def create_traffic_accident_tables(engine: Engine) -> None:
