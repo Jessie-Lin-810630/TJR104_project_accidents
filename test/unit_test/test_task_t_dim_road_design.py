@@ -20,7 +20,7 @@ class TestTDimRoadDesign:
             tmpdir_path = Path(tmpdir)
 
             # Create test CSV content (need at least 3 rows because of skipfooter=2)
-            csv_content = """道路類別名稱,道路型態子類別名稱,道路型態子類別名稱
+            csv_content = """道路類別名稱,道路型態大類別名稱,道路型態子類別名稱
 國道,國道,國道
 省道,省道,省道
 縣道,縣道,縣道
@@ -35,7 +35,7 @@ class TestTDimRoadDesign:
             # Mock the column mapping
             with patch("src.task.t_dim_road_design.dim_road_design_col_map", {
                 "道路類別名稱": "road_type_primary_party",
-                "道路型態子類別名稱": "road_form_major",
+                "道路型態大類別名稱": "road_form_major",
                 "道路型態子類別名稱": "road_form_minor"
             }):
                 result = t_dim_road_design([str(csv_file1), str(csv_file2)])
@@ -75,7 +75,7 @@ value1,value2"""
 
             with patch("src.task.t_dim_road_design.dim_road_design_col_map", {
                 "道路類別名稱": "road_type_primary_party",
-                "道路型態子類別名稱": "road_form_major",
+                "道路型態大類別名稱": "road_form_major",
                 "道路型態子類別名稱": "road_form_minor"
             }):
                 with pytest.raises(KeyError):
@@ -87,17 +87,20 @@ value1,value2"""
             tmpdir_path = Path(tmpdir)
 
             # Create CSV with duplicate rows
-            csv_content = """道路類別名稱,道路型態子類別名稱,道路型態子類別名稱
+            csv_content = """道路類別名稱,道路型態大類別名稱,道路型態子類別名稱
 國道,國道,國道
 國道,國道,國道
-省道,省道,省道"""
+省道,省道,省道
+省道,省道,省道
+省道3,省道3,省道3
+省道4,省道4,省道4"""
 
             csv_file = tmpdir_path / "duplicates.csv"
             csv_file.write_text(csv_content, encoding="utf-8")
 
             with patch("src.task.t_dim_road_design.dim_road_design_col_map", {
                 "道路類別名稱": "road_type_primary_party",
-                "道路型態子類別名稱": "road_form_major",
+                "道路型態大類別名稱": "road_form_major",
                 "道路型態子類別名稱": "road_form_minor"
             }):
                 result = t_dim_road_design([str(csv_file)])
@@ -113,16 +116,19 @@ value1,value2"""
             tmpdir_path = Path(tmpdir)
 
             # Create CSV with whitespace
-            csv_content = """道路類別名稱,道路型態子類別名稱,道路型態子類別名稱
+            csv_content = """道路類別名稱,道路型態大類別名稱,道路型態子類別名稱
  國道 , 國道 , 國道
-省道,省道,省道"""
+省道,省道1,省道2
+ 國道 , 國道 , 國道
+省道,省道,省道
+省道,省道,省道1"""
 
             csv_file = tmpdir_path / "whitespace.csv"
             csv_file.write_text(csv_content, encoding="utf-8")
 
             with patch("src.task.t_dim_road_design.dim_road_design_col_map", {
                 "道路類別名稱": "road_type_primary_party",
-                "道路型態子類別名稱": "road_form_major",
+                "道路型態大類別名稱": "road_form_major",
                 "道路型態子類別名稱": "road_form_minor"
             }):
                 result = t_dim_road_design([str(csv_file)])
